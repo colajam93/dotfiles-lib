@@ -285,6 +285,18 @@ test_dotfile_install_dotfile_to_file() {
     assertEquals "$content" "$LIBSS_TEST_CONTENT"
 }
 
+test_install_all_source_directory_missing() {
+    mkdir destination
+    printf '%s\n' original > destination/existing
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/missing" &> /dev/null
+    local code=$?
+
+    assertNotEquals 'A missing source directory must return nonzero' 0 "$code"
+    assertEquals existing "$(find destination -mindepth 1 -printf '%f\n')"
+    assertEquals original "$(cat destination/existing)"
+}
+
 test_install_all_one() {
     mkdir d
     tmp_home=$HOME

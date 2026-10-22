@@ -116,6 +116,7 @@ dfl_dotfile_install() {
 dfl_install_all() {
     local target_dir=$1
     shift
+    [[ -d $target_dir ]] || return 1
     local patterns=('install.sh' '.*.swp' "$@")
     local i srcfile pattern regex
     while IFS= read -r -d '' i; do
