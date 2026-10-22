@@ -16,32 +16,6 @@ setUp() {
     echo $LIBSS_TEST_CONTENT > $LIBSS_TEST_INPUT
 }
 
-test_overwrite_file_only_move() {
-    # same as 'mv input moved' and print some information
-    local result=$(_dfl_overwrite_file $LIBSS_TEST_INPUT moved)
-
-    assertTrue "[[ -f moved ]]"
-    assertFalse "[[ -f $LIBSS_TEST_INPUT ]]"
-    local content=$(<moved)
-    assertEquals "$LIBSS_TEST_CONTENT" $content
-
-    assertEquals "$(tput setaf 4)information:$(tput sgr0) mv $LIBSS_TEST_INPUT moved" "$result"
-}
-
-test_overwrite_file_overwrite() {
-    touch moved
-    # overwrite
-    local result=$(_dfl_overwrite_file $LIBSS_TEST_INPUT moved)
-
-    assertTrue "[[ -f moved ]]"
-    assertFalse "[[ -f $LIBSS_TEST_INPUT ]]"
-
-    local content=$(<moved)
-    assertEquals "$LIBSS_TEST_CONTENT" $content
-
-    assertEquals "$(tput setaf 4)information:$(tput sgr0) mv $LIBSS_TEST_INPUT moved" "$result"
-}
-
 test_safe_install_source_missing() {
     local code
     local result
@@ -323,6 +297,151 @@ test_install_all_exclude() {
     assertFalse "[[ -f $SHUNIT_TMPDIR/d/.install.sh ]]"
     assertFalse "[[ -f $SHUNIT_TMPDIR/d/.foo.swp ]]"
     export HOME=$tmp_home
+}
+
+test_install_all_multiple_excludes() {
+    mkdir source destination
+    local name
+    for name in first second keep; do
+        printf '%s\n' "$name" > "source/$name"
+    done
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" first second &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertFalse "[[ -e destination/.first ]]"
+    assertFalse "[[ -e destination/.second ]]"
+    assertEquals keep "$(cat destination/.keep)"
+}
+
+test_install_all_exclude_suffix() {
+    mkdir source destination
+    local name
+    for name in skip prefix_skip skip.backup keep; do
+        printf '%s\n' "$name" > "source/$name"
+    done
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" skip &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertFalse "[[ -e destination/.skip ]]"
+    assertFalse "[[ -e destination/.prefix_skip ]]"
+    assertEquals skip.backup "$(cat destination/.skip.backup)"
+    assertEquals keep "$(cat destination/.keep)"
+}
+
+test_install_all_exclude_regex() {
+    mkdir source destination
+    local name
+    for name in alpha.conf beta.conf alpha.conf.backup alphaxconf gamma.conf; do
+        printf '%s\n' "$name" > "source/$name"
+    done
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" '(alpha|beta)\.conf' &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertFalse "[[ -e destination/.alpha.conf ]]"
+    assertFalse "[[ -e destination/.beta.conf ]]"
+    for name in alpha.conf.backup alphaxconf gamma.conf; do
+        assertEquals "$name" "$(cat "destination/.$name")"
+    done
+}
+
+test_install_all_exclude_matches_source_path() {
+    mkdir source destination
+    printf '%s\n' excluded > source/skip
+    printf '%s\n' keep > source/keep
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" '/source/skip' &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertFalse "[[ -e destination/.skip ]]"
+    assertEquals keep "$(cat destination/.keep)"
+}
+
+test_install_all_no_selected_files() {
+    mkdir source destination
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" &> /dev/null
+    local code=$?
+    assertEquals 0 "$code"
+    assertEquals '' "$(find destination -mindepth 1 -print)"
+
+    touch source/install.sh source/.foo.swp source/skip
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" skip &> /dev/null
+    code=$?
+    assertEquals 0 "$code"
+    assertEquals '' "$(find destination -mindepth 1 -print)"
+}
+
+test_install_vim_layout() {
+    mkdir source home config
+    local name
+    for name in vimrc plugins.toml plugins_lazy.toml; do
+        printf '%s\n' "$name" > "source/$name"
+    done
+    touch source/install.sh
+
+    dfl_safe_install source/plugins.toml config &> /dev/null
+    assertEquals 0 "$?"
+    dfl_safe_install source/plugins_lazy.toml config &> /dev/null
+    assertEquals 0 "$?"
+    HOME="$SHUNIT_TMPDIR/home" dfl_install_all "$SHUNIT_TMPDIR/source" plugins.toml plugins_lazy.toml &> /dev/null
+    assertEquals 0 "$?"
+    dfl_safe_install source/vimrc config/init.vim &> /dev/null
+    assertEquals 0 "$?"
+
+    assertEquals vimrc "$(cat home/.vimrc)"
+    assertEquals vimrc "$(cat config/init.vim)"
+    assertEquals plugins.toml "$(cat config/plugins.toml)"
+    assertEquals plugins_lazy.toml "$(cat config/plugins_lazy.toml)"
+    assertFalse "[[ -e home/.plugins.toml ]]"
+    assertFalse "[[ -e home/.plugins_lazy.toml ]]"
+    assertFalse "[[ -e home/.install.sh ]]"
+}
+
+test_print_messages() {
+    assertEquals "$(tput setaf 1)error:$(tput sgr0) failure" "$(dfl_print_error failure)"
+    assertEquals "$(tput setaf 3)warning:$(tput sgr0) warning" "$(dfl_print_warning warning)"
+    assertEquals "$(tput setaf 4)information:$(tput sgr0) progress" "$(dfl_print_information progress)"
+}
+
+test_print_messages_quiet() {
+    local output code
+    output=$(
+        export _dfl_quiet=true
+        dfl_print_error failure
+        dfl_print_warning warning
+        dfl_print_information progress
+    )
+    code=$?
+    assertEquals 0 "$code"
+    assertEquals '' "$output"
+}
+
+test_safe_install_quiet() {
+    local output code
+    output=$(_dfl_quiet=true dfl_safe_install "$LIBSS_TEST_INPUT" moved)
+    code=$?
+    assertEquals 0 "$code"
+    assertEquals '' "$output"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved)"
+}
+
+test_platform_name_linux() {
+    # The supported test environment is the Linux Docker image.
+    assertEquals linux "$(dfl_platform_name)"
+}
+
+test_installed() {
+    dfl_installed bash
+    assertEquals 0 "$?"
+    dfl_installed dfl_test_nonexistent_command
+    assertNotEquals 0 "$?"
 }
 
 if [[ -n "$ZSH_VERSION" ]]; then  # zsh
