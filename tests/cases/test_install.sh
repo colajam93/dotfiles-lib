@@ -281,10 +281,10 @@ else  # bash
     script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 fi
 
-if ! [[ -f "$script_dir/../shunit2" ]]; then
+if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
     echo "fatal: shunit2 not found"
     exit 1
 fi
 
 source "$script_dir/../../mbth/mbth.sh"
-source "$script_dir/../shunit2"
+source "${SHUNIT2:-/usr/share/shunit2/shunit2}"

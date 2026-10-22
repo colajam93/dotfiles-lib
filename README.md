@@ -1,14 +1,8 @@
 # mbthbash
 
-[![Build Status](https://travis-ci.org/colajam93/mbthbash.svg?branch=master)](https://travis-ci.org/colajam93/mbthbash)
+[![Tests](https://github.com/colajam93/dotfiles-lib/actions/workflows/tests.yml/badge.svg)](https://github.com/colajam93/dotfiles-lib/actions/workflows/tests.yml)
 
 Miscellaneous bash library
-
-## Tested OS
-
-- Arch Linux
-- macOS High Sierra
-  - Latest Bash from Homebrew
 
 ## License
 
