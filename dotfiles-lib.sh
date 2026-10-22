@@ -160,32 +160,6 @@ install_all() {
     done
 }
 
-foreach_with_generator() {
-    if [[ $# -ne 2 ]]; then
-        return 1
-    fi
-    local command="$1"
-    if [[ $command != *"%s"* ]]; then
-        command="$command %s"
-    fi
-    local generator="$2"
-    local i
-    for i in $(eval $generator); do
-        local c=$(printf "$command\n" "$i")
-        eval $c
-    done
-}
-
-ls_absolute_path() {
-    if [[ $# -ne 1 ]]; then
-        return 1
-    fi
-    local i
-    for i in $(find $1 -maxdepth 1 -type f); do
-        echo $(_gnu_readlink_f $i)
-    done
-}
-
 platform_name() {
     local n=$(uname -s)
     if [[ $n == "Linux" ]]; then
