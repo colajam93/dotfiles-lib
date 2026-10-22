@@ -131,13 +131,20 @@ test_safe_install_destination_permission_default() {
 
 test_safe_install_skip() {
     echo "$LIBSS_TEST_CONTENT" > moved
+    chmod 600 moved
+    touch -d '2000-01-01 00:00:00 UTC' moved
+    local before code
+    before=$(stat -c '%i:%y:%a' moved)
 
     dfl_safe_install "$LIBSS_TEST_INPUT" moved &> /dev/null
+    code=$?
+
+    assertEquals 0 "$code"
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
-    local content
-    content="$(<moved)"
-    assertEquals "$LIBSS_TEST_CONTENT" "$content"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved)"
+    assertEquals 'Existing file metadata must not change' "$before" "$(stat -c '%i:%y:%a' moved)"
+    assertFalse "[[ -e moved.dotnew ]]"
 }
 
 libss_test_safe_install_not_overwrite() {
@@ -174,6 +181,20 @@ test_safe_install_not_overwrite4() {
 
 test_safe_install_not_overwrite5() {
     libss_test_safe_install_not_overwrite "m"
+}
+
+test_safe_install_not_overwrite_backslash_y() {
+    libss_test_safe_install_not_overwrite '\y'
+}
+
+test_safe_install_not_overwrite_eof() {
+    echo "${LIBSS_TEST_CONTENT}_bar" > moved
+
+    dfl_safe_install "$LIBSS_TEST_INPUT" moved < /dev/null &> /dev/null
+
+    assertEquals "${LIBSS_TEST_CONTENT}_bar" "$(cat moved)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved.dotnew)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "$LIBSS_TEST_INPUT")"
 }
 
 libss_test_safe_install_overwrite_prepare() {
