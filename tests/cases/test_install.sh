@@ -5,7 +5,7 @@ oneTimeSetUp() {
     export LIBSS_TEST_INPUT="input"
 }
 
-oneTImeTearDown() {
+oneTimeTearDown() {
     unset LIBSS_TEST_CONTENT
     unset LIBSS_TEST_INPUT
 }
@@ -139,7 +139,7 @@ test_safe_install_not_overwrite4() {
     libss_test_safe_install_not_overwrite "N"
 }
 
-test_safe_install_not_overwrite4() {
+test_safe_install_not_overwrite5() {
     libss_test_safe_install_not_overwrite "m"
 }
 
