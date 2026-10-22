@@ -18,3 +18,6 @@ jobs:
           persist-credentials: false
       - name: Run tests in Docker
         run: ./tests/run.sh
+      - name: Run ShellCheck in Docker
+        if: ${{ !cancelled() }}
+        run: ./tests/lint.sh
