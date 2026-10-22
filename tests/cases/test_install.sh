@@ -106,6 +106,30 @@ test_safe_install_destination_dangling_symlink() {
     assertEquals "$LIBSS_TEST_CONTENT" "$(cat destination/target)"
 }
 
+test_safe_install_destination_parent_missing() {
+    local code
+    safe_install "$LIBSS_TEST_INPUT" missing/target &> /dev/null
+    code=$?
+
+    assertNotEquals 0 "$code"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "$LIBSS_TEST_INPUT")"
+    assertEquals "./$LIBSS_TEST_INPUT" "$(find . -mindepth 1 -print)"
+}
+
+test_safe_install_destination_parent_symlink() {
+    mkdir destination
+    ln -s destination linked
+
+    safe_install "$LIBSS_TEST_INPUT" linked/target &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertTrue "[[ -L linked ]]"
+    assertEquals "destination" "$(readlink linked)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat destination/target)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "$LIBSS_TEST_INPUT")"
+}
+
 test_safe_install_destination_permission() {
     # output include path resolve so test is omitted
     safe_install $LIBSS_TEST_INPUT moved 456 &> /dev/null

@@ -58,7 +58,8 @@ print_information() {
 safe_install() {
     # source file
     if [[ -e $1 ]]; then
-        local srcfile=$(readlink -f -- "$1")
+        local srcfile
+        srcfile=$(readlink -f -- "$1") || return 1
     else
         echo "$1: No such file or directory"
         return 1
@@ -68,9 +69,9 @@ safe_install() {
     local destfile
     if [[ -d $2 ]]; then
         local filename=$(basename $srcfile)
-        destfile=$(readlink -f -- "$2/$filename")
+        destfile=$(readlink -f -- "$2/$filename") || return 1
     else
-        destfile=$(readlink -f -- "$2")
+        destfile=$(readlink -f -- "$2") || return 1
     fi
 
     # if argc == 3, use 3rd argument as permission mode which pass to install -m
@@ -120,7 +121,7 @@ dotfile_install() {
     # src is not dotfile and dest is directory
     if ! [[ $1 == .* ]] && [[ -d $2 ]]; then
         local filename=$(basename $1)
-        destfile=$(readlink -f -- "$2/.$filename")
+        destfile=$(readlink -f -- "$2/.$filename") || return 1
     # do nothing
     else
         destfile=$2
@@ -133,9 +134,10 @@ install_all() {
     local target_dir=$1
     shift
     local excludes="$(join '|' $(_backward_match 'install.sh' '.*.swp' $@))"
-    local i
+    local i srcfile
     for i in $(find $target_dir -maxdepth 1 -type f | egrep -v $excludes); do
-        dotfile_install "$(readlink -f -- "$i")" $HOME
+        srcfile=$(readlink -f -- "$i") || return 1
+        dotfile_install "$srcfile" $HOME
     done
 }
 
