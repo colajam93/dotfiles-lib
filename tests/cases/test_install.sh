@@ -299,6 +299,42 @@ test_install_all_exclude() {
     export HOME=$tmp_home
 }
 
+test_safe_install_paths_with_spaces() {
+    mkdir 'source dir' 'destination dir'
+    printf '%s\n' "$LIBSS_TEST_CONTENT" > 'source dir/input [1]'
+    printf '%s\n' old > 'destination dir/input [1]'
+
+    _dfl_force=true dfl_safe_install 'source dir/input [1]' 'destination dir' &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat 'source dir/input [1]')"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat 'destination dir/input [1]')"
+    assertFalse "[[ -e 'destination dir/input [1].dotnew' ]]"
+}
+
+test_install_all_special_filenames() {
+    mkdir 'source dir' 'home dir'
+    local name
+    for name in 'space name' 'glob [1]*' $'line\nbreak' '-leading'; do
+        printf '%s\n' "$LIBSS_TEST_CONTENT" > "source dir/$name"
+    done
+    printf '%s\n' excluded > 'source dir/skip me'
+    printf '%s\n' excluded > 'source dir/install.sh'
+    printf '%s\n' excluded > 'source dir/.foo.swp'
+
+    HOME="$SHUNIT_TMPDIR/home dir" dfl_install_all "$SHUNIT_TMPDIR/source dir" 'skip me' &> /dev/null
+    local code=$?
+
+    assertEquals 0 "$code"
+    for name in 'space name' 'glob [1]*' $'line\nbreak' '-leading'; do
+        assertEquals "$name" "$LIBSS_TEST_CONTENT" "$(cat "home dir/.$name")"
+    done
+    assertFalse "[[ -e 'home dir/.skip me' ]]"
+    assertFalse "[[ -e 'home dir/.install.sh' ]]"
+    assertFalse "[[ -e 'home dir/..foo.swp' ]]"
+}
+
 test_install_all_multiple_excludes() {
     mkdir source destination
     local name
@@ -348,6 +384,31 @@ test_install_all_exclude_regex() {
     for name in alpha.conf.backup alphaxconf gamma.conf; do
         assertEquals "$name" "$(cat "destination/.$name")"
     done
+}
+
+test_install_all_exclude_argument_boundaries() {
+    mkdir source together separate
+    local name
+    for name in 'first second' first second keep; do
+        printf '%s\n' "$name" > "source/$name"
+    done
+
+    HOME="$SHUNIT_TMPDIR/together" dfl_install_all "$SHUNIT_TMPDIR/source" 'first second' &> /dev/null
+    local code=$?
+    assertEquals 0 "$code"
+    assertFalse "[[ -e 'together/.first second' ]]"
+    assertEquals first "$(cat together/.first)"
+    assertEquals second "$(cat together/.second)"
+    assertEquals keep "$(cat together/.keep)"
+
+    HOME="$SHUNIT_TMPDIR/separate" dfl_install_all "$SHUNIT_TMPDIR/source" first second &> /dev/null
+    code=$?
+    assertEquals 0 "$code"
+    assertFalse "[[ -e separate/.first ]]"
+    assertFalse "[[ -e separate/.second ]]"
+    # 'first second' also matches the suffix 'second'.
+    assertFalse "[[ -e 'separate/.first second' ]]"
+    assertEquals keep "$(cat separate/.keep)"
 }
 
 test_install_all_exclude_matches_source_path() {

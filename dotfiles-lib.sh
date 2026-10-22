@@ -6,27 +6,8 @@ _dfl_reset=$(tput sgr0 2> /dev/null)
 _dfl_overwrite_file() {
     local destfile_new=$1
     local destfile_old=$2
-    mv $destfile_new $destfile_old
+    mv -- "$destfile_new" "$destfile_old"
     dfl_print_information "mv $destfile_new $destfile_old"
-}
-
-_dfl_backward_match() {
-    local i
-    for i in $@; do
-        printf "%s$\n" $i
-    done
-}
-
-_dfl_join() {
-    local d=$1
-    shift
-    if [[ $# -eq 0 ]]; then
-        echo ''
-        return 1
-    fi
-    echo -n "$1"
-    shift
-    printf "%s" "${@/#/$d}"
 }
 
 _dfl_is_quiet() {
@@ -68,7 +49,7 @@ dfl_safe_install() {
     # destination file
     local destfile
     if [[ -d $2 ]]; then
-        local filename=$(basename $srcfile)
+        local filename=$(basename -- "$srcfile")
         destfile=$(readlink -f -- "$2/$filename") || return 1
     else
         destfile=$(readlink -f -- "$2") || return 1
@@ -82,7 +63,7 @@ dfl_safe_install() {
 
     # overwrite check
     # same file
-    if $(cmp -s $srcfile $destfile); then
+    if $(cmp -s -- "$srcfile" "$destfile"); then
         dfl_print_information "skipped ${destfile}"
         return 0
     # destfile already exists
@@ -93,19 +74,19 @@ dfl_safe_install() {
         dfl_print_warning "${destfile_old} saved as ${destfile}"
     fi
 
-    install -m $permission $srcfile $destfile
+    install -m "$permission" -- "$srcfile" "$destfile"
     dfl_print_information "installed in ${destfile}"
 
     if [[ $destfile_new != "" ]]; then
         if [[ "$_dfl_force" == "true" ]]; then
-            _dfl_overwrite_file $destfile_new $destfile_old
+            _dfl_overwrite_file "$destfile_new" "$destfile_old"
         else
             diff --color=auto -u -- "$destfile_old" "$destfile_new"
             echo "overwrite $destfile_old by new file? [y/N]"
             local input
             read input
             if [[ $input == "y" ]]; then
-                _dfl_overwrite_file $destfile_new $destfile_old
+                _dfl_overwrite_file "$destfile_new" "$destfile_old"
             fi
         fi
     fi
@@ -120,25 +101,32 @@ dfl_dotfile_install() {
     local destfile
     # src is not dotfile and dest is directory
     if ! [[ $1 == .* ]] && [[ -d $2 ]]; then
-        local filename=$(basename $1)
+        local filename=$(basename -- "$1")
         destfile=$(readlink -f -- "$2/.$filename") || return 1
     # do nothing
     else
         destfile=$2
     fi
 
-    dfl_safe_install $1 $destfile
+    dfl_safe_install "$1" "$destfile"
 }
 
 dfl_install_all() {
     local target_dir=$1
     shift
-    local excludes="$(_dfl_join '|' $(_dfl_backward_match 'install.sh' '.*.swp' $@))"
-    local i srcfile
-    for i in $(find $target_dir -maxdepth 1 -type f | egrep -v $excludes); do
+    local patterns=('install.sh' '.*.swp' "$@")
+    local i srcfile pattern regex
+    while IFS= read -r -d '' i; do
+        for pattern in "${patterns[@]}"; do
+            # Preserve the existing ERE matching against the source path.
+            regex="${pattern}$"
+            if [[ $i =~ $regex ]]; then
+                continue 2
+            fi
+        done
         srcfile=$(readlink -f -- "$i") || return 1
-        dfl_dotfile_install "$srcfile" $HOME
-    done
+        dfl_dotfile_install "$srcfile" "$HOME"
+    done < <(find "$target_dir" -maxdepth 1 -type f -print0)
 }
 
 dfl_platform_name() {
