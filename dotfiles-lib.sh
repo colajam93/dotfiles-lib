@@ -11,7 +11,7 @@ _dfl_overwrite_file() {
 }
 
 _dfl_is_quiet() {
-    [[ "$_dfl_quiet" == "true" ]]
+    [[ "${_dfl_quiet:-false}" == "true" ]]
     return $?
 }
 
@@ -49,7 +49,8 @@ dfl_safe_install() {
     # destination file
     local destfile
     if [[ -d $2 ]]; then
-        local filename=$(basename -- "$srcfile")
+        local filename
+        filename=$(basename -- "$srcfile") || return 1
         destfile=$(readlink -f -- "$2/$filename") || return 1
     else
         destfile=$(readlink -f -- "$2") || return 1
@@ -63,7 +64,7 @@ dfl_safe_install() {
 
     # overwrite check
     # same file
-    if $(cmp -s -- "$srcfile" "$destfile"); then
+    if cmp -s -- "$srcfile" "$destfile"; then
         dfl_print_information "skipped ${destfile}"
         return 0
     # destfile already exists
@@ -78,13 +79,13 @@ dfl_safe_install() {
     dfl_print_information "installed in ${destfile}"
 
     if [[ $destfile_new != "" ]]; then
-        if [[ "$_dfl_force" == "true" ]]; then
+        if [[ "${_dfl_force:-false}" == "true" ]]; then
             _dfl_overwrite_file "$destfile_new" "$destfile_old"
         else
             diff --color=auto -u -- "$destfile_old" "$destfile_new"
             echo "overwrite $destfile_old by new file? [y/N]"
             local input
-            read input
+            read -r input
             if [[ $input == "y" ]]; then
                 _dfl_overwrite_file "$destfile_new" "$destfile_old"
             fi
@@ -101,7 +102,8 @@ dfl_dotfile_install() {
     local destfile
     # src is not dotfile and dest is directory
     if ! [[ $1 == .* ]] && [[ -d $2 ]]; then
-        local filename=$(basename -- "$1")
+        local filename
+        filename=$(basename -- "$1") || return 1
         destfile=$(readlink -f -- "$2/.$filename") || return 1
     # do nothing
     else
@@ -130,17 +132,18 @@ dfl_install_all() {
 }
 
 dfl_platform_name() {
-    local n=$(uname -s)
+    local n
+    n=$(uname -s) || return 1
     if [[ $n == "Linux" ]]; then
         echo "linux"
     elif [[ $n == "Darwin" ]]; then
         echo "mac"
     else
-        echo $n
+        echo "$n"
     fi
 }
 
 dfl_installed() {
-    type $1 &> /dev/null
+    type "$1" &> /dev/null
     return $?
 }
