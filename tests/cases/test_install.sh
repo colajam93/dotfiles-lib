@@ -286,5 +286,5 @@ if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
     exit 1
 fi
 
-source "$script_dir/../../mbth/mbth.sh"
+source "$script_dir/../../dotfiles-lib.sh"
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"
