@@ -3,19 +3,6 @@ _yellow=$(tput setaf 3 2> /dev/null)
 _blue=$(tput setaf 4 2> /dev/null)
 _reset=$(tput sgr0 2> /dev/null)
 
-_gnu_readlink_f() {
-    pushd $(pwd -P) &> /dev/null
-    local TARGET_FILE=$1
-    while [[ "$TARGET_FILE" != "" ]]; do
-        cd $(dirname $TARGET_FILE)
-        local FILENAME=$(basename $TARGET_FILE)
-        TARGET_FILE=$(readlink $FILENAME)
-    done
-
-    echo "$(pwd -P)/$FILENAME"
-    popd &> /dev/null
-}
-
 _overwrite_file() {
     local destfile_new=$1
     local destfile_old=$2
@@ -28,14 +15,6 @@ _backward_match() {
     for i in $@; do
         printf "%s$\n" $i
     done
-}
-
-_diff() {
-    if diff --help 2>&1 | grep -q 'diffutils'; then
-        diff --color=auto $@
-    else
-        diff $@
-    fi
 }
 
 join() {
@@ -79,7 +58,7 @@ print_information() {
 safe_install() {
     # source file
     if [[ -e $1 ]]; then
-        local srcfile=$(_gnu_readlink_f $1)
+        local srcfile=$(readlink -f -- "$1")
     else
         echo "$1: No such file or directory"
         return 1
@@ -89,9 +68,9 @@ safe_install() {
     local destfile
     if [[ -d $2 ]]; then
         local filename=$(basename $srcfile)
-        destfile=$(_gnu_readlink_f $2/$filename)
+        destfile=$(readlink -f -- "$2/$filename")
     else
-        destfile=$(_gnu_readlink_f $2)
+        destfile=$(readlink -f -- "$2")
     fi
 
     # if argc == 3, use 3rd argument as permission mode which pass to install -m
@@ -120,7 +99,7 @@ safe_install() {
         if [[ "$_dotfiles_force" == "true" ]]; then
             _overwrite_file $destfile_new $destfile_old
         else
-            _diff -u $destfile_old $destfile_new
+            diff --color=auto -u -- "$destfile_old" "$destfile_new"
             echo "overwrite $destfile_old by new file? [y/N]"
             local input
             read input
@@ -141,7 +120,7 @@ dotfile_install() {
     # src is not dotfile and dest is directory
     if ! [[ $1 == .* ]] && [[ -d $2 ]]; then
         local filename=$(basename $1)
-        destfile=$(_gnu_readlink_f $2/.$filename)
+        destfile=$(readlink -f -- "$2/.$filename")
     # do nothing
     else
         destfile=$2
@@ -156,7 +135,7 @@ install_all() {
     local excludes="$(join '|' $(_backward_match 'install.sh' '.*.swp' $@))"
     local i
     for i in $(find $target_dir -maxdepth 1 -type f | egrep -v $excludes); do
-        dotfile_install "$(_gnu_readlink_f $i)" $HOME
+        dotfile_install "$(readlink -f -- "$i")" $HOME
     done
 }
 

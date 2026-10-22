@@ -70,6 +70,42 @@ test_safe_install_destination_directory() {
     assertEquals "$LIBSS_TEST_CONTENT" $content
 }
 
+test_safe_install_source_symlink() {
+    mkdir source destination
+    ln -s "../$LIBSS_TEST_INPUT" source/link
+
+    safe_install source/link destination &> /dev/null
+
+    assertTrue "[[ -L source/link ]]"
+    assertTrue "[[ -f destination/$LIBSS_TEST_INPUT ]]"
+    assertFalse "[[ -e destination/link ]]"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "destination/$LIBSS_TEST_INPUT")"
+}
+
+test_safe_install_destination_symlink() {
+    mkdir destination
+    echo old > destination/target
+    ln -s target destination/link
+
+    _dotfiles_force=true safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
+
+    assertTrue "[[ -L destination/link ]]"
+    assertEquals "target" "$(readlink destination/link)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat destination/target)"
+    assertFalse "[[ -e destination/target.dotnew ]]"
+}
+
+test_safe_install_destination_dangling_symlink() {
+    mkdir destination
+    ln -s target destination/link
+
+    safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
+
+    assertTrue "[[ -L destination/link ]]"
+    assertEquals "target" "$(readlink destination/link)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat destination/target)"
+}
+
 test_safe_install_destination_permission() {
     # output include path resolve so test is omitted
     safe_install $LIBSS_TEST_INPUT moved 456 &> /dev/null
@@ -77,11 +113,7 @@ test_safe_install_destination_permission() {
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<moved)"
     assertEquals "$LIBSS_TEST_CONTENT" $content
-    if [[ $(uname -s) == "Linux" ]]; then
-        assertEquals "456" $(stat -c %a moved)
-    elif [[ $(uname -s) == "Darwin" ]]; then
-        assertEquals "456" $(stat -f %A moved)
-    fi
+    assertEquals "456" "$(stat -c %a moved)"
 }
 
 test_safe_install_destination_permission_default() {
@@ -91,11 +123,7 @@ test_safe_install_destination_permission_default() {
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<moved)"
     assertEquals "$LIBSS_TEST_CONTENT" $content
-    if [[ $(uname -s) == "Linux" ]]; then
-        assertEquals "644" $(stat -c %a moved)
-    elif [[ $(uname -s) == "Darwin" ]]; then
-        assertEquals "644" $(stat -f %A moved)
-    fi
+    assertEquals "644" "$(stat -c %a moved)"
 }
 
 
