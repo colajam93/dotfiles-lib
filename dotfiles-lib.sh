@@ -1,23 +1,23 @@
-_red=$(tput setaf 1 2> /dev/null)
-_yellow=$(tput setaf 3 2> /dev/null)
-_blue=$(tput setaf 4 2> /dev/null)
-_reset=$(tput sgr0 2> /dev/null)
+_dfl_red=$(tput setaf 1 2> /dev/null)
+_dfl_yellow=$(tput setaf 3 2> /dev/null)
+_dfl_blue=$(tput setaf 4 2> /dev/null)
+_dfl_reset=$(tput sgr0 2> /dev/null)
 
-_overwrite_file() {
+_dfl_overwrite_file() {
     local destfile_new=$1
     local destfile_old=$2
     mv $destfile_new $destfile_old
-    print_information "mv $destfile_new $destfile_old"
+    dfl_print_information "mv $destfile_new $destfile_old"
 }
 
-_backward_match() {
+_dfl_backward_match() {
     local i
     for i in $@; do
         printf "%s$\n" $i
     done
 }
 
-join() {
+_dfl_join() {
     local d=$1
     shift
     if [[ $# -eq 0 ]]; then
@@ -29,33 +29,33 @@ join() {
     printf "%s" "${@/#/$d}"
 }
 
-_is_quiet() {
-    [[ "$_dotfiles_quiet" == "true" ]]
+_dfl_is_quiet() {
+    [[ "$_dfl_quiet" == "true" ]]
     return $?
 }
 
-print_error() {
-    if _is_quiet; then
+dfl_print_error() {
+    if _dfl_is_quiet; then
         return 0
     fi
-    echo "${_red}error:${_reset} $1"
+    echo "${_dfl_red}error:${_dfl_reset} $1"
 }
 
-print_warning() {
-    if _is_quiet; then
+dfl_print_warning() {
+    if _dfl_is_quiet; then
         return 0
     fi
-    echo "${_yellow}warning:${_reset} $1"
+    echo "${_dfl_yellow}warning:${_dfl_reset} $1"
 }
 
-print_information() {
-    if _is_quiet; then
+dfl_print_information() {
+    if _dfl_is_quiet; then
         return 0
     fi
-    echo "${_blue}information:${_reset} $1"
+    echo "${_dfl_blue}information:${_dfl_reset} $1"
 }
 
-safe_install() {
+dfl_safe_install() {
     # source file
     if [[ -e $1 ]]; then
         local srcfile
@@ -83,35 +83,35 @@ safe_install() {
     # overwrite check
     # same file
     if $(cmp -s $srcfile $destfile); then
-        print_information "skipped ${destfile}"
+        dfl_print_information "skipped ${destfile}"
         return 0
     # destfile already exists
     elif [[ -e $destfile ]]; then
         local destfile_old=$destfile
         local destfile_new=$destfile.dotnew
         destfile=$destfile_new
-        print_warning "${destfile_old} saved as ${destfile}"
+        dfl_print_warning "${destfile_old} saved as ${destfile}"
     fi
 
     install -m $permission $srcfile $destfile
-    print_information "installed in ${destfile}"
+    dfl_print_information "installed in ${destfile}"
 
     if [[ $destfile_new != "" ]]; then
-        if [[ "$_dotfiles_force" == "true" ]]; then
-            _overwrite_file $destfile_new $destfile_old
+        if [[ "$_dfl_force" == "true" ]]; then
+            _dfl_overwrite_file $destfile_new $destfile_old
         else
             diff --color=auto -u -- "$destfile_old" "$destfile_new"
             echo "overwrite $destfile_old by new file? [y/N]"
             local input
             read input
             if [[ $input == "y" ]]; then
-                _overwrite_file $destfile_new $destfile_old
+                _dfl_overwrite_file $destfile_new $destfile_old
             fi
         fi
     fi
 }
 
-dotfile_install() {
+dfl_dotfile_install() {
     if [[ $# -ne 2 ]]; then
         return 1
     fi
@@ -127,21 +127,21 @@ dotfile_install() {
         destfile=$2
     fi
 
-    safe_install $1 $destfile
+    dfl_safe_install $1 $destfile
 }
 
-install_all() {
+dfl_install_all() {
     local target_dir=$1
     shift
-    local excludes="$(join '|' $(_backward_match 'install.sh' '.*.swp' $@))"
+    local excludes="$(_dfl_join '|' $(_dfl_backward_match 'install.sh' '.*.swp' $@))"
     local i srcfile
     for i in $(find $target_dir -maxdepth 1 -type f | egrep -v $excludes); do
         srcfile=$(readlink -f -- "$i") || return 1
-        dotfile_install "$srcfile" $HOME
+        dfl_dotfile_install "$srcfile" $HOME
     done
 }
 
-platform_name() {
+dfl_platform_name() {
     local n=$(uname -s)
     if [[ $n == "Linux" ]]; then
         echo "linux"
@@ -152,7 +152,7 @@ platform_name() {
     fi
 }
 
-installed() {
+dfl_installed() {
     type $1 &> /dev/null
     return $?
 }

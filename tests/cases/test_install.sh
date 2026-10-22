@@ -18,7 +18,7 @@ setUp() {
 
 test_overwrite_file_only_move() {
     # same as 'mv input moved' and print some information
-    local result=$(_overwrite_file $LIBSS_TEST_INPUT moved)
+    local result=$(_dfl_overwrite_file $LIBSS_TEST_INPUT moved)
 
     assertTrue "[[ -f moved ]]"
     assertFalse "[[ -f $LIBSS_TEST_INPUT ]]"
@@ -31,7 +31,7 @@ test_overwrite_file_only_move() {
 test_overwrite_file_overwrite() {
     touch moved
     # overwrite
-    local result=$(_overwrite_file $LIBSS_TEST_INPUT moved)
+    local result=$(_dfl_overwrite_file $LIBSS_TEST_INPUT moved)
 
     assertTrue "[[ -f moved ]]"
     assertFalse "[[ -f $LIBSS_TEST_INPUT ]]"
@@ -45,7 +45,7 @@ test_overwrite_file_overwrite() {
 test_safe_install_source_missing() {
     local code
     local result
-    result=$(safe_install missing bar)
+    result=$(dfl_safe_install missing bar)
     code=$?
     assertEquals 1 "$code"
     assertEquals "missing: No such file or directory" "$result"
@@ -53,7 +53,7 @@ test_safe_install_source_missing() {
 
 test_safe_install_destination_file() {
     # output include path resolve so test is omitted
-    safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content=$(<moved)
@@ -63,7 +63,7 @@ test_safe_install_destination_file() {
 test_safe_install_destination_directory() {
     mkdir d
     # output include path resolve so test is omitted
-    safe_install $LIBSS_TEST_INPUT d &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT d &> /dev/null
     assertTrue "[[ -f d/$LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<d/$LIBSS_TEST_INPUT)"
@@ -74,7 +74,7 @@ test_safe_install_source_symlink() {
     mkdir source destination
     ln -s "../$LIBSS_TEST_INPUT" source/link
 
-    safe_install source/link destination &> /dev/null
+    dfl_safe_install source/link destination &> /dev/null
 
     assertTrue "[[ -L source/link ]]"
     assertTrue "[[ -f destination/$LIBSS_TEST_INPUT ]]"
@@ -87,7 +87,7 @@ test_safe_install_destination_symlink() {
     echo old > destination/target
     ln -s target destination/link
 
-    _dotfiles_force=true safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
+    _dfl_force=true dfl_safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
 
     assertTrue "[[ -L destination/link ]]"
     assertEquals "target" "$(readlink destination/link)"
@@ -99,7 +99,7 @@ test_safe_install_destination_dangling_symlink() {
     mkdir destination
     ln -s target destination/link
 
-    safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
+    dfl_safe_install "$LIBSS_TEST_INPUT" destination/link &> /dev/null
 
     assertTrue "[[ -L destination/link ]]"
     assertEquals "target" "$(readlink destination/link)"
@@ -108,7 +108,7 @@ test_safe_install_destination_dangling_symlink() {
 
 test_safe_install_destination_parent_missing() {
     local code
-    safe_install "$LIBSS_TEST_INPUT" missing/target &> /dev/null
+    dfl_safe_install "$LIBSS_TEST_INPUT" missing/target &> /dev/null
     code=$?
 
     assertNotEquals 0 "$code"
@@ -120,7 +120,7 @@ test_safe_install_destination_parent_symlink() {
     mkdir destination
     ln -s destination linked
 
-    safe_install "$LIBSS_TEST_INPUT" linked/target &> /dev/null
+    dfl_safe_install "$LIBSS_TEST_INPUT" linked/target &> /dev/null
     local code=$?
 
     assertEquals 0 "$code"
@@ -132,7 +132,7 @@ test_safe_install_destination_parent_symlink() {
 
 test_safe_install_destination_permission() {
     # output include path resolve so test is omitted
-    safe_install $LIBSS_TEST_INPUT moved 456 &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT moved 456 &> /dev/null
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<moved)"
@@ -142,7 +142,7 @@ test_safe_install_destination_permission() {
 
 test_safe_install_destination_permission_default() {
     # output include path resolve so test is omitted
-    safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<moved)"
@@ -154,7 +154,7 @@ test_safe_install_destination_permission_default() {
 test_safe_install_skip() {
     echo $LIBSS_TEST_CONTENT > moved
 
-    safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<moved)"
@@ -164,7 +164,7 @@ test_safe_install_skip() {
 libss_test_safe_install_not_overwrite() {
     echo "${LIBSS_TEST_CONTENT}_bar" > moved
 
-    echo $1 | safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    echo $1 | dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     assertTrue "[[ -f moved ]]"
     assertTrue "[[ -f moved.dotnew ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
@@ -209,33 +209,33 @@ libss_test_safe_install_overwrite_check() {
 
 test_safe_install_overwrite() {
     libss_test_safe_install_overwrite_prepare
-    echo y | safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    echo y | dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     libss_test_safe_install_overwrite_check
 }
 
 test_safe_install_overwrite_force() {
-    export _dotfiles_force=true
+    export _dfl_force=true
     libss_test_safe_install_overwrite_prepare
-    safe_install $LIBSS_TEST_INPUT moved &> /dev/null
+    dfl_safe_install $LIBSS_TEST_INPUT moved &> /dev/null
     libss_test_safe_install_overwrite_check
-    unset _dotfiles_force
+    unset _dfl_force
 }
 
 test_dotfile_install_missing_argument() {
     local code
-    dotfile_install
+    dfl_dotfile_install
     code=$?
     assertTrue "[[ $code -eq 1 ]]"
-    dotfile_install foo
+    dfl_dotfile_install foo
     code=$?
     assertTrue "[[ $code -eq 1 ]]"
-    dotfile_install foo bar baz
+    dfl_dotfile_install foo bar baz
     code=$?
     assertTrue "[[ $code -eq 1 ]]"
 }
 
 test_dotfile_install_normal_to_directory() {
-    dotfile_install $LIBSS_TEST_INPUT $SHUNIT_TMPDIR &> /dev/null
+    dfl_dotfile_install $LIBSS_TEST_INPUT $SHUNIT_TMPDIR &> /dev/null
     assertTrue "[[ -f .$LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     local content="$(<.$LIBSS_TEST_INPUT)"
@@ -243,7 +243,7 @@ test_dotfile_install_normal_to_directory() {
 }
 
 test_dotfile_install_normal_to_file() {
-    dotfile_install $LIBSS_TEST_INPUT moved &> /dev/null
+    dfl_dotfile_install $LIBSS_TEST_INPUT moved &> /dev/null
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f moved ]]"
     local content="$(<moved)"
@@ -253,7 +253,7 @@ test_dotfile_install_normal_to_file() {
 test_dotfile_install_dotfile_to_directory() {
     mkdir d
     echo $LIBSS_TEST_CONTENT > .dot
-    dotfile_install .dot d &> /dev/null
+    dfl_dotfile_install .dot d &> /dev/null
     assertTrue "[[ -f .dot ]]"
     assertTrue "[[ -f d/.dot ]]"
     local content="$(<d/.dot)"
@@ -262,7 +262,7 @@ test_dotfile_install_dotfile_to_directory() {
 
 test_dotfile_install_dotfile_to_file() {
     echo $LIBSS_TEST_CONTENT > .dot
-    dotfile_install .dot moved &> /dev/null
+    dfl_dotfile_install .dot moved &> /dev/null
     assertTrue "[[ -f .dot ]]"
     assertTrue "[[ -f moved ]]"
     local content="$(<moved)"
@@ -273,7 +273,7 @@ test_install_all_one() {
     mkdir d
     tmp_home=$HOME
     export HOME="$SHUNIT_TMPDIR/d"
-    install_all $SHUNIT_TMPDIR &> /dev/null
+    dfl_install_all $SHUNIT_TMPDIR &> /dev/null
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f $SHUNIT_TMPDIR/d/.$LIBSS_TEST_INPUT ]]"
     local content="$(<$SHUNIT_TMPDIR/d/.$LIBSS_TEST_INPUT)"
@@ -287,7 +287,7 @@ test_install_all_some() {
     mkdir d
     tmp_home=$HOME
     export HOME="$SHUNIT_TMPDIR/d"
-    install_all $SHUNIT_TMPDIR &> /dev/null
+    dfl_install_all $SHUNIT_TMPDIR &> /dev/null
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f a ]]"
     assertTrue "[[ -f b ]]"
@@ -311,7 +311,7 @@ test_install_all_exclude() {
     mkdir d
     tmp_home=$HOME
     export HOME="$SHUNIT_TMPDIR/d"
-    install_all $SHUNIT_TMPDIR a &> /dev/null
+    dfl_install_all $SHUNIT_TMPDIR a &> /dev/null
     assertTrue "[[ -f $LIBSS_TEST_INPUT ]]"
     assertTrue "[[ -f a ]]"
     assertTrue "[[ -f b ]]"
