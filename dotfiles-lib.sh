@@ -118,7 +118,18 @@ dfl_install_all() {
     shift
     [[ -d $target_dir ]] || return 1
     local patterns=('install.sh' '.*.swp' "$@")
-    local i srcfile pattern regex
+    local i srcfile pattern regex pattern_status
+    for pattern in "${patterns[@]}"; do
+        regex="${pattern}$"
+        if [[ '' =~ $regex ]]; then
+            continue
+        else
+            # Intentionally inspect =~ status 2 (invalid regex), not just 0/1.
+            # shellcheck disable=SC2319
+            pattern_status=$?
+            [[ $pattern_status -ne 2 ]] || return 1
+        fi
+    done
     while IFS= read -r -d '' i; do
         for pattern in "${patterns[@]}"; do
             # Preserve the existing ERE matching against the source path.

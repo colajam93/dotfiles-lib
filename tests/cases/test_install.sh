@@ -458,6 +458,32 @@ test_install_all_exclude_matches_source_path() {
     assertEquals keep "$(cat destination/.keep)"
 }
 
+test_install_all_invalid_exclusion_regex() {
+    mkdir source destination
+    printf '%s\n' updated > source/config
+    printf '%s\n' new > source/new
+    printf '%s\n' original > destination/.config
+
+    HOME="$SHUNIT_TMPDIR/destination" _dfl_force=true \
+        dfl_install_all "$SHUNIT_TMPDIR/source" '[' < /dev/null &> /dev/null
+    local code=$?
+
+    assertNotEquals 'An invalid exclusion must return nonzero' 0 "$code"
+    assertEquals 'Existing files must not change' original "$(cat destination/.config)"
+    assertFalse 'No files may be added for an invalid exclusion' "[[ -e destination/.new ]]"
+    assertFalse "[[ -e destination/.config.dotnew ]]"
+}
+
+test_install_all_invalid_exclusion_regex_empty_directory() {
+    mkdir source destination
+
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all "$SHUNIT_TMPDIR/source" '[' &> /dev/null
+    local code=$?
+
+    assertNotEquals 'Exclusions must be validated even without source files' 0 "$code"
+    assertEquals '' "$(find destination -mindepth 1 -print)"
+}
+
 test_install_all_no_selected_files() {
     mkdir source destination
 
