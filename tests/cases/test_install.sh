@@ -25,6 +25,15 @@ test_safe_install_source_missing() {
     assertEquals "missing: No such file or directory" "$result"
 }
 
+test_safe_install_invalid_permission() {
+    dfl_safe_install "$LIBSS_TEST_INPUT" moved invalid-mode &> /dev/null
+    local code=$?
+
+    assertNotEquals 'A failed copy must return nonzero' 0 "$code"
+    assertFalse "[[ -e moved ]]"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "$LIBSS_TEST_INPUT")"
+}
+
 test_safe_install_destination_file() {
     # output include path resolve so test is omitted
     dfl_safe_install "$LIBSS_TEST_INPUT" moved &> /dev/null

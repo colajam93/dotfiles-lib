@@ -75,7 +75,7 @@ dfl_safe_install() {
         dfl_print_warning "${destfile_old} saved as ${destfile}"
     fi
 
-    install -m "$permission" -- "$srcfile" "$destfile"
+    install -m "$permission" -- "$srcfile" "$destfile" || return 1
     dfl_print_information "installed in ${destfile}"
 
     if [[ $destfile_new != "" ]]; then
