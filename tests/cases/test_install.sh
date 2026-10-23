@@ -623,6 +623,47 @@ test_installed() {
     assertNotEquals 0 "$?"
 }
 
+test_install_all_accepts_confirmation_for_each_file() {
+    mkdir source destination
+    printf 'new a\n' > source/a
+    printf 'new b\n' > source/b
+    printf 'old a\n' > destination/.a
+    printf 'old b\n' > destination/.b
+    printf 'y\ny\n' | HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals 'new a' "$(cat destination/.a)"
+    assertEquals 'new b' "$(cat destination/.b)"
+    assertFalse '[[ -e destination/.a.dotnew || -e destination/.b.dotnew ]]'
+}
+
+test_install_all_rejects_confirmation_for_each_file() {
+    mkdir source destination
+    printf 'new a\n' > source/a
+    printf 'new b\n' > source/b
+    printf 'old a\n' > destination/.a
+    printf 'old b\n' > destination/.b
+    printf 'n\nn\n' | HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals 'old a' "$(cat destination/.a)"
+    assertEquals 'old b' "$(cat destination/.b)"
+    assertEquals 'new a' "$(cat destination/.a.dotnew)"
+    assertEquals 'new b' "$(cat destination/.b.dotnew)"
+}
+
+test_install_all_preserves_files_on_confirmation_eof() {
+    mkdir source destination
+    printf 'new a\n' > source/a
+    printf 'new b\n' > source/b
+    printf 'old a\n' > destination/.a
+    printf 'old b\n' > destination/.b
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source < /dev/null > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals 'old a' "$(cat destination/.a)"
+    assertEquals 'old b' "$(cat destination/.b)"
+    assertEquals 'new a' "$(cat destination/.a.dotnew)"
+    assertEquals 'new b' "$(cat destination/.b.dotnew)"
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then

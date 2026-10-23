@@ -93,7 +93,7 @@ dfl_safe_install() {
             _dfl_overwrite_file "$destfile_new" "$destfile_old"
         else
             diff --color=auto -u -- "$destfile_old" "$destfile_new"
-            echo "overwrite $destfile_old by new file? [y/N]"
+            printf 'overwrite %s by new file? [y/N] ' "$destfile_old"
             local input
             read -r input
             if [[ $input == "y" ]]; then
@@ -137,7 +137,8 @@ dfl_install_all() {
     done
 
     local i srcfile
-    while IFS= read -r -d '' i; do
+    # Keep standard input available for overwrite confirmations.
+    while IFS= read -r -d '' -u 3 i; do
         for regex in "${patterns[@]}"; do
             if [[ $i =~ $regex ]]; then
                 continue 2
@@ -145,7 +146,7 @@ dfl_install_all() {
         done
         srcfile=$(readlink -f -- "$i") || return 1
         dfl_dotfile_install "$srcfile" "$HOME"
-    done < <(find "$target_dir" -maxdepth 1 -type f -print0)
+    done 3< <(find "$target_dir" -maxdepth 1 -type f -print0)
 }
 
 dfl_platform_name() {
