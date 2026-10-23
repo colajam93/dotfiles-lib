@@ -6,7 +6,7 @@ _dfl_reset=$(tput sgr0 2> /dev/null)
 _dfl_overwrite_file() {
     local destfile_new=$1
     local destfile_old=$2
-    mv -- "$destfile_new" "$destfile_old"
+    mv -- "$destfile_new" "$destfile_old" || return 1
     dfl_print_information "mv $destfile_new $destfile_old"
 }
 

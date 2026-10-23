@@ -664,6 +664,22 @@ test_install_all_preserves_files_on_confirmation_eof() {
     assertEquals 'new b' "$(cat destination/.b.dotnew)"
 }
 
+test_safe_install_reports_overwrite_failure() {
+    printf 'old\n' > moved
+    local force code
+    for force in true false; do
+        (
+            mv() { return 1; }
+            printf 'y\n' | _dfl_force="$force" dfl_safe_install "$LIBSS_TEST_INPUT" moved
+        ) > output 2>&1
+        code=$?
+        assertNotEquals 'Failed replacement must return nonzero' 0 "$code"
+        assertEquals old "$(cat moved)"
+        assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved.dotnew)"
+        assertFalse 'grep -q "information:.*mv " output'
+    done
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
