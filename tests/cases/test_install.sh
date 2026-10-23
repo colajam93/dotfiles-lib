@@ -484,6 +484,43 @@ test_install_all_invalid_exclusion_regex_empty_directory() {
     assertEquals '' "$(find destination -mindepth 1 -print)"
 }
 
+test_install_all_preserves_errexit_on_success() {
+    mkdir source destination
+    printf '%s\n' content > source/config
+    local option code
+    for option in -e +e; do
+        HOME="$SHUNIT_TMPDIR/destination" bash "$option" -c '
+            source "$1"
+            before=$-
+            dfl_install_all "$2" "unused"
+            code=$?
+            [[ $code -eq 0 && $- == "$before" ]]
+        ' bash "$script_dir/../../dotfiles-lib.sh" "$SHUNIT_TMPDIR/source" &> /dev/null
+        code=$?
+        assertEquals "Caller shell options must be preserved ($option)" 0 "$code"
+        assertEquals content "$(cat destination/.config)"
+    done
+}
+
+test_install_all_preserves_errexit_on_invalid_regex() {
+    mkdir source destination
+    printf '%s\n' content > source/config
+    local option code
+    for option in -e +e; do
+        HOME="$SHUNIT_TMPDIR/destination" bash "$option" -c '
+            source "$1"
+            before=$-
+            if dfl_install_all "$2" "["; then
+                exit 1
+            fi
+            [[ $- == "$before" ]]
+        ' bash "$script_dir/../../dotfiles-lib.sh" "$SHUNIT_TMPDIR/source" &> /dev/null
+        code=$?
+        assertEquals "Caller shell options must be preserved ($option)" 0 "$code"
+        assertEquals '' "$(find destination -mindepth 1 -print)"
+    done
+}
+
 test_install_all_no_selected_files() {
     mkdir source destination
 
