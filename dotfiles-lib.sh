@@ -92,10 +92,12 @@ dfl_safe_install() {
         if [[ "${_dfl_force:-false}" == "true" ]]; then
             _dfl_overwrite_file "$destfile_new" "$destfile_old"
         else
-            diff --color=auto -u -- "$destfile_old" "$destfile_new"
+            local diff_status=0
+            diff --color=auto -u -- "$destfile_old" "$destfile_new" || diff_status=$?
+            [[ $diff_status -le 1 ]] || return 1
             printf 'overwrite %s by new file? [y/N] ' "$destfile_old"
             local input
-            read -r input
+            read -r input || return 0
             if [[ $input == "y" ]]; then
                 _dfl_overwrite_file "$destfile_new" "$destfile_old"
             fi

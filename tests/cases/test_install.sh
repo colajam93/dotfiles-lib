@@ -720,6 +720,45 @@ test_install_all_rejects_incomplete_file_listing() {
     assertEquals '' "$(find destination -mindepth 1 -print)"
 }
 
+test_safe_install_accepts_confirmation_with_errexit() {
+    printf 'old\n' > moved
+    printf 'y\n' | bash -e -c '
+        source "$1"
+        dfl_safe_install "$2" moved
+        printf continued > continued
+    ' bash "$script_dir/../../dotfiles-lib.sh" "$LIBSS_TEST_INPUT" > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved)"
+    assertFalse '[[ -e moved.dotnew ]]'
+    assertTrue '[[ -e continued ]]'
+}
+
+test_safe_install_declines_eof_with_errexit() {
+    printf 'old\n' > moved
+    bash -e -c '
+        source "$1"
+        dfl_safe_install "$2" moved
+        printf continued > continued
+    ' bash "$script_dir/../../dotfiles-lib.sh" "$LIBSS_TEST_INPUT" < /dev/null > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals old "$(cat moved)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved.dotnew)"
+    assertTrue '[[ -e continued ]]'
+}
+
+test_safe_install_stops_if_diff_fails() {
+    printf 'old\n' > moved
+    (
+        diff() { return 2; }
+        printf 'y\n' | dfl_safe_install "$LIBSS_TEST_INPUT" moved
+    ) > output 2>&1
+    local code=$?
+    assertNotEquals 'A comparison error must stop installation' 0 "$code"
+    assertEquals old "$(cat moved)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved.dotnew)"
+    assertFalse 'grep -q "overwrite .*by new file" output'
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
