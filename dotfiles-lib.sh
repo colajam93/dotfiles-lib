@@ -72,6 +72,8 @@ dfl_safe_install() {
         permission=$3
     fi
 
+    local destfile_old='' destfile_new=''
+
     # overwrite check
     # same file
     if cmp -s -- "$srcfile" "$destfile"; then
@@ -79,8 +81,8 @@ dfl_safe_install() {
         return 0
     # destfile already exists
     elif [[ -e $destfile ]]; then
-        local destfile_old=$destfile
-        local destfile_new=$destfile.dotnew
+        destfile_old=$destfile
+        destfile_new=$destfile.dotnew
         destfile=$destfile_new
         dfl_print_warning "${destfile_old} saved as ${destfile}"
     fi

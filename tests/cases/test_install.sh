@@ -759,6 +759,18 @@ test_safe_install_stops_if_diff_fails() {
     assertFalse 'grep -q "overwrite .*by new file" output'
 }
 
+test_safe_install_creates_file_with_nounset() {
+    bash -eu -c '
+        source "$1"
+        dfl_safe_install "$2" moved
+        printf continued > continued
+    ' bash "$script_dir/../../dotfiles-lib.sh" "$LIBSS_TEST_INPUT" > /dev/null 2>&1
+    assertEquals 0 "$?"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat moved)"
+    assertFalse '[[ -e moved.dotnew ]]'
+    assertTrue '[[ -e continued ]]'
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
