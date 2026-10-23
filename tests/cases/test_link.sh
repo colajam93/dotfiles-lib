@@ -314,8 +314,6 @@ test_link_preview_empty_plan() {
 }
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source-path=SCRIPTDIR
-# shellcheck source=../../dotfiles-lib.sh
 source "$script_dir/../../dotfiles-lib.sh"
 # shellcheck source=/dev/null
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"

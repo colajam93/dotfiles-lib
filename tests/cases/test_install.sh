@@ -671,8 +671,6 @@ if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
     exit 1
 fi
 
-# shellcheck source-path=SCRIPTDIR
-# shellcheck source=../../dotfiles-lib.sh
 source "$script_dir/../../dotfiles-lib.sh"
 # shellcheck source=/dev/null
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"
