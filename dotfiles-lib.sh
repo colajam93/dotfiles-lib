@@ -164,3 +164,108 @@ dfl_installed() {
     type "$1" &> /dev/null
     return $?
 }
+
+# A plan spans all selected categories in the current shell.
+_dfl_link_sources=()
+_dfl_link_destinations=()
+
+dfl_link_reset() {
+    _dfl_link_sources=()
+    _dfl_link_destinations=()
+}
+
+dfl_link_add() {
+    if [[ $# -ne 2 || -z $1 || -z $2 ]]; then
+        dfl_print_error 'usage: dfl_link_add SOURCE DESTINATION' >&2
+        return 1
+    fi
+    local source=$1 destination=$2
+    [[ $source == /* ]] || source=$PWD/$source
+    [[ $destination == /* ]] || destination=$PWD/$destination
+    _dfl_link_sources+=("$source")
+    _dfl_link_destinations+=("$destination")
+}
+
+# Resolve only the parent: the destination itself may be a conflicting link.
+# NUL-delimited output preserves paths ending in a newline.
+_dfl_link_destination() {
+    local destination=$1 parent ancestor name
+    name=${destination##*/}
+    if [[ -z $name || $name == . || $name == .. ]]; then
+        return 1
+    fi
+    parent=${destination%/*}
+    parent=${parent:-/}
+    ancestor=$parent
+    while [[ ! -e $ancestor && ! -L $ancestor ]]; do
+        ancestor=${ancestor%/*}
+        ancestor=${ancestor:-/}
+    done
+    [[ -d $ancestor ]] || return 1
+    IFS= read -r -d '' parent < <(realpath -zm -- "$parent") || return 1
+    printf '%s\0' "${parent%/}/$name"
+}
+
+_dfl_link_matches() {
+    local source destination
+    [[ -L $2 ]] || return 1
+    IFS= read -r -d '' source < <(realpath -ze -- "$1") || return 1
+    IFS= read -r -d '' destination < <(realpath -ze -- "$2") || return 1
+    [[ $source == "$destination" ]]
+}
+
+dfl_link_check() {
+    local i j source destination previous directory
+    local destinations=() directories=()
+    for i in "${!_dfl_link_sources[@]}"; do
+        source=${_dfl_link_sources[i]}
+        if [[ ! -e $source ]]; then
+            dfl_print_error "link source does not exist: $source" >&2
+            return 1
+        fi
+        if ! IFS= read -r -d '' destination < <(
+            _dfl_link_destination "${_dfl_link_destinations[i]}"
+        ); then
+            dfl_print_error "invalid link destination: ${_dfl_link_destinations[i]}" >&2
+            return 1
+        fi
+        directory=$destination
+        if [[ -L $destination && -d $destination ]]; then
+            IFS= read -r -d '' directory < <(realpath -ze -- "$destination") || return 1
+        fi
+        for j in "${!destinations[@]}"; do
+            previous=${destinations[j]}
+            if [[ $destination == "$previous" ||
+                  $destination == "${directories[j]%/}/"* ||
+                  $previous == "${directory%/}/"* ]]; then
+                dfl_print_error "overlapping link destinations: $previous and $destination" >&2
+                return 1
+            fi
+        done
+        destinations+=("$destination")
+        directories+=("$directory")
+        if _dfl_link_matches "$source" "$destination"; then
+            continue
+        fi
+        if [[ -e $destination || -L $destination ]]; then
+            dfl_print_error "link destination already exists: $destination" >&2
+            return 1
+        fi
+    done
+}
+
+dfl_link_apply() {
+    dfl_link_check || return 1
+    local i source destination
+    for i in "${!_dfl_link_sources[@]}"; do
+        source=${_dfl_link_sources[i]}
+        IFS= read -r -d '' destination < <(
+            _dfl_link_destination "${_dfl_link_destinations[i]}"
+        ) || return 1
+        if _dfl_link_matches "$source" "$destination"; then
+            continue
+        fi
+        mkdir -p -- "${destination%/*}/" || return 1
+        ln -sT -- "$source" "$destination" || return 1
+    done
+}
