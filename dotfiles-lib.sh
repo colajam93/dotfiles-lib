@@ -10,6 +10,16 @@ _dfl_overwrite_file() {
     dfl_print_information "mv $destfile_new $destfile_old"
 }
 
+_dfl_regex_is_valid() (
+    # Keep shell option changes local to this subshell.
+    set +e
+    local status
+    [[ '' =~ $1 ]]
+    status=$?
+    # Both a match (0) and no match (1) mean the syntax is valid.
+    [[ $status -ne 2 ]]
+)
+
 _dfl_is_quiet() {
     [[ "${_dfl_quiet:-false}" == "true" ]]
     return $?
@@ -118,15 +128,11 @@ dfl_install_all() {
     shift
     [[ -d $target_dir ]] || return 1
     local patterns=()
-    local pattern regex pattern_status
+    local pattern regex
     for pattern in 'install.sh' '.*.swp' "$@"; do
         # Preserve the existing ERE matching against the source path.
         regex="${pattern}$"
-        pattern_status=0
-        # Intentionally inspect =~ status 2 (invalid regex), not just 0/1.
-        # shellcheck disable=SC2319
-        [[ '' =~ $regex ]] || pattern_status=$?
-        [[ $pattern_status -ne 2 ]] || return 1
+        _dfl_regex_is_valid "$regex" || return 1
         patterns+=("$regex")
     done
 
