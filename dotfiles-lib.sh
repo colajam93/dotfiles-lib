@@ -254,6 +254,22 @@ dfl_link_check() {
     done
 }
 
+dfl_link_preview() {
+    dfl_link_check || return 1
+    local i source destination action
+    for i in "${!_dfl_link_sources[@]}"; do
+        source=${_dfl_link_sources[i]}
+        IFS= read -r -d '' destination < <(
+            _dfl_link_destination "${_dfl_link_destinations[i]}"
+        ) || return 1
+        action=create
+        if _dfl_link_matches "$source" "$destination"; then
+            action=skip
+        fi
+        printf '%s %q -> %q\n' "$action" "$destination" "$source" || return 1
+    done
+}
+
 dfl_link_apply() {
     dfl_link_check || return 1
     local i source destination

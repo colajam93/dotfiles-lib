@@ -261,6 +261,58 @@ test_link_apply_rechecks_deleted_source() {
     assertFalse '[[ -e target ]]'
 }
 
+test_link_preview_shows_create_and_skip_without_changes() {
+    mkdir target
+    ln -s ../source target/existing
+    local inode output
+    inode=$(stat -c %i target/existing)
+    dfl_link_add source target/nested/new
+    dfl_link_add source target/existing
+    dfl_link_preview > preview-output
+    assertEquals 0 "$?"
+    output=$(cat preview-output)
+    assertEquals "create $PWD/target/nested/new -> $PWD/source
+skip $PWD/target/existing -> $PWD/source" "$output"
+    assertFalse '[[ -e target/nested ]]'
+    assertEquals "$inode" "$(stat -c %i target/existing)"
+    assertEquals ../source "$(readlink target/existing)"
+    dfl_link_apply
+    assertEquals 0 "$?"
+    assertTrue '[[ -L target/nested/new ]]'
+}
+
+test_link_preview_rejects_invalid_plan_without_partial_output() {
+    printf 'old\n' > conflict
+    dfl_link_add source target/new
+    dfl_link_add source conflict
+    local output code
+    output=$(dfl_link_preview 2> /dev/null)
+    code=$?
+    assertNotEquals 0 "$code"
+    assertEquals '' "$output"
+    assertFalse '[[ -e target ]]'
+    assertEquals old "$(cat conflict)"
+}
+
+test_link_preview_escapes_special_paths() {
+    local name=$'config [*]\n' expected output
+    cp source "$name"
+    dfl_link_add "$name" "target/$name"
+    printf -v expected 'create %q -> %q' "$PWD/target/$name" "$PWD/$name"
+    output=$(dfl_link_preview)
+    assertEquals 0 "$?"
+    assertEquals "$expected" "$output"
+    assertEquals 1 "$(printf '%s\n' "$output" | wc -l)"
+    assertFalse '[[ -e target ]]'
+}
+
+test_link_preview_empty_plan() {
+    local output
+    output=$(dfl_link_preview)
+    assertEquals 0 "$?"
+    assertEquals '' "$output"
+}
+
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source-path=SCRIPTDIR
 # shellcheck source=../../dotfiles-lib.sh

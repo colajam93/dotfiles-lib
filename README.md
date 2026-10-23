@@ -24,6 +24,19 @@ filesystem. Relative paths are anchored to the working directory at registration
 the destination must name the link itself, without a trailing slash.
 
 `dfl_link_check` validates the entire plan without creating files.
+To inspect the planned changes, call `dfl_link_preview` after registration:
+
+```bash
+dfl_link_preview
+# create /home/user/.gitconfig -> /path/to/dotfiles/core/gitconfig
+# skip /home/user/.config/git/ignore -> /path/to/dotfiles/core/gitignore
+```
+
+Preview validates the entire plan before printing anything to standard output.
+Each line shows `create` or `skip`, followed by the destination and source.
+Paths use Bash shell escaping so spaces and newlines remain unambiguous. Preview
+neither changes the filesystem nor clears the plan; an empty plan prints nothing.
+
 `dfl_link_apply` always checks the plan again before creating parent directories
 and absolute symlinks. Existing symlinks to the same target are kept. Missing
 sources, existing destination files or directories, conflicting or broken links,
