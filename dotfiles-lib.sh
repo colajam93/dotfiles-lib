@@ -136,9 +136,14 @@ dfl_install_all() {
         patterns+=("$regex")
     done
 
+    local files=() find_pid
+    mapfile -d '' -t files < <(find "$target_dir" -maxdepth 1 -type f -print0) || return 1
+    find_pid=$!
+    # Check the producer before applying an incomplete listing.
+    wait "$find_pid" || return 1
+
     local i srcfile
-    # Keep standard input available for overwrite confirmations.
-    while IFS= read -r -d '' -u 3 i; do
+    for i in "${files[@]}"; do
         for regex in "${patterns[@]}"; do
             if [[ $i =~ $regex ]]; then
                 continue 2
@@ -146,7 +151,7 @@ dfl_install_all() {
         done
         srcfile=$(readlink -f -- "$i") || return 1
         dfl_dotfile_install "$srcfile" "$HOME" || return 1
-    done 3< <(find "$target_dir" -maxdepth 1 -type f -print0)
+    done
 }
 
 dfl_platform_name() {

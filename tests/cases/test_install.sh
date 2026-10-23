@@ -697,6 +697,29 @@ test_install_all_stops_on_copy_failure() {
     assertFalse '[[ -e destination/.b ]]'
 }
 
+test_install_all_reports_directory_read_failure() {
+    mkdir source destination
+    printf 'config\n' > source/config
+    chmod 000 source
+    HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source > /dev/null 2>&1
+    local code=$?
+    chmod 755 source
+    assertNotEquals 'An unreadable source directory must fail' 0 "$code"
+    assertEquals '' "$(find destination -mindepth 1 -print)"
+}
+
+test_install_all_rejects_incomplete_file_listing() {
+    mkdir source destination
+    printf 'config\n' > source/config
+    (
+        find() { command find "$@"; return 1; }
+        HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source
+    ) > /dev/null 2>&1
+    local code=$?
+    assertNotEquals 'A partial listing must not be treated as success' 0 "$code"
+    assertEquals '' "$(find destination -mindepth 1 -print)"
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
