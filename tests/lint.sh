@@ -11,7 +11,7 @@ docker run --rm \
     --user "$(id -u):$(id -g)" \
     --mount "type=bind,src=$repo_dir,dst=/workspace,readonly" \
     --entrypoint bash \
-    "$image" -c 'shellcheck --shell=bash \
+    "$image" -c 'shellcheck --external-sources --shell=bash \
         /workspace/dotfiles-lib.sh \
         /workspace/tests/*.sh \
         /workspace/tests/docker/*.sh \

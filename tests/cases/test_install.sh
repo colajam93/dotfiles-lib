@@ -593,10 +593,9 @@ test_print_messages() {
 test_print_messages_quiet() {
     local output code
     output=$(
-        export _dfl_quiet=true
-        dfl_print_error failure
-        dfl_print_warning warning
-        dfl_print_information progress
+        _dfl_quiet=true dfl_print_error failure
+        _dfl_quiet=true dfl_print_warning warning
+        _dfl_quiet=true dfl_print_information progress
     )
     code=$?
     assertEquals 0 "$code"
@@ -631,8 +630,8 @@ if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
     exit 1
 fi
 
-# Checked separately by tests/lint.sh.
-# shellcheck source=/dev/null
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../../dotfiles-lib.sh
 source "$script_dir/../../dotfiles-lib.sh"
 # shellcheck source=/dev/null
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"
