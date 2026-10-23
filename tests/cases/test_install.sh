@@ -680,6 +680,23 @@ test_safe_install_reports_overwrite_failure() {
     done
 }
 
+test_install_all_stops_on_copy_failure() {
+    mkdir source destination
+    printf 'unreadable\n' > source/a
+    printf 'later\n' > source/b
+    chmod 000 source/a
+    (
+        # Fix traversal order so a failing copy precedes a valid one.
+        find() { command find "$@" | sort -z; }
+        HOME="$SHUNIT_TMPDIR/destination" dfl_install_all source
+    ) > /dev/null 2>&1
+    local code=$?
+    chmod 644 source/a
+    assertNotEquals 'A failed copy must not be hidden by later success' 0 "$code"
+    assertFalse '[[ -e destination/.a ]]'
+    assertFalse '[[ -e destination/.b ]]'
+}
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then

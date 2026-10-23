@@ -145,7 +145,7 @@ dfl_install_all() {
             fi
         done
         srcfile=$(readlink -f -- "$i") || return 1
-        dfl_dotfile_install "$srcfile" "$HOME"
+        dfl_dotfile_install "$srcfile" "$HOME" || return 1
     done 3< <(find "$target_dir" -maxdepth 1 -type f -print0)
 }
 
