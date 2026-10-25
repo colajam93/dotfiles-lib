@@ -313,6 +313,69 @@ test_link_preview_empty_plan() {
     assertEquals '' "$output"
 }
 
+test_link_apply_logs_create_and_skip() {
+    mkdir target
+    ln -s ../source target/existing
+    dfl_link_add source target/new
+    dfl_link_add source target/existing
+    local output
+    output=$(dfl_link_apply)
+    assertEquals 0 "$?"
+    assertEquals "create $PWD/target/new -> $PWD/source
+skip $PWD/target/existing -> $PWD/source" "$output"
+    assertTrue '[[ -L target/new ]]'
+    assertEquals ../source "$(readlink target/existing)"
+}
+
+test_link_apply_quiet_suppresses_create_and_skip() {
+    dfl_link_add source target/new
+    local output
+    output=$(_dfl_quiet=true dfl_link_apply)
+    assertEquals 0 "$?"
+    assertEquals '' "$output"
+    assertTrue '[[ -L target/new ]]'
+    output=$(_dfl_quiet=true dfl_link_apply)
+    assertEquals 0 "$?"
+    assertEquals '' "$output"
+}
+
+test_link_apply_logs_escaped_paths() {
+    local name=$'config [*]\n' expected output
+    cp source "$name"
+    dfl_link_add "$name" "target/$name"
+    printf -v expected 'create %q -> %q' "$PWD/target/$name" "$PWD/$name"
+    output=$(dfl_link_apply)
+    assertEquals 0 "$?"
+    assertEquals "$expected" "$output"
+    printf -v expected 'skip %q -> %q' "$PWD/target/$name" "$PWD/$name"
+    output=$(dfl_link_apply)
+    assertEquals 0 "$?"
+    assertEquals "$expected" "$output"
+}
+
+test_link_apply_failure_does_not_log_success() {
+    dfl_link_add source target/new
+    local output code
+    output=$(
+        ln() { return 23; }
+        dfl_link_apply
+    )
+    code=$?
+    assertNotEquals 0 "$code"
+    assertEquals '' "$output"
+    assertFalse '[[ -L target/new ]]'
+}
+
+test_link_apply_log_failure_returns_failure() {
+    dfl_link_add source target/new
+    dfl_link_apply > /dev/full 2>/dev/null
+    assertNotEquals 'Failed create output must propagate' 0 "$?"
+    assertTrue '[[ -L target/new ]]'
+    dfl_link_apply > /dev/full 2>/dev/null
+    assertNotEquals 'Failed skip output must propagate' 0 "$?"
+}
+
+
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../../dotfiles-lib.sh"
 # shellcheck source=/dev/null
