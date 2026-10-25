@@ -282,16 +282,21 @@ dfl_link_preview() {
 
 dfl_link_apply() {
     dfl_link_check || return 1
-    local i source destination
+    local i source destination action
     for i in "${!_dfl_link_sources[@]}"; do
         source=${_dfl_link_sources[i]}
         IFS= read -r -d '' destination < <(
             _dfl_link_destination "${_dfl_link_destinations[i]}"
         ) || return 1
         if _dfl_link_matches "$source" "$destination"; then
-            continue
+            action=skip
+        else
+            mkdir -p -- "${destination%/*}/" || return 1
+            ln -sT -- "$source" "$destination" || return 1
+            action=create
         fi
-        mkdir -p -- "${destination%/*}/" || return 1
-        ln -sT -- "$source" "$destination" || return 1
+        if ! _dfl_is_quiet; then
+            printf "%s %q -> %q\n" "$action" "$destination" "$source" || return 1
+        fi
     done
 }
