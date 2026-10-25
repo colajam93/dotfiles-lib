@@ -265,20 +265,74 @@ dfl_link_check() {
 }
 
 dfl_link_preview() {
-    dfl_link_check || return 1
-    local i source destination action
+    local i j source destination directory action reason
+    local status=0
+    local destinations=() directories=() reasons=()
+
+    # Inspect the complete plan before printing so both sides of an overlap
+    # are marked as conflicts, regardless of registration order.
     for i in "${!_dfl_link_sources[@]}"; do
         source=${_dfl_link_sources[i]}
-        IFS= read -r -d '' destination < <(
-            _dfl_link_destination "${_dfl_link_destinations[i]}"
-        ) || return 1
-        action=create
-        if _dfl_link_matches "$source" "$destination"; then
-            action=skip
+        destination=${_dfl_link_destinations[i]}
+        reason=
+        directories[i]=
+        if [[ ! -e $source ]]; then
+            reason='source does not exist'
         fi
-        printf '%s %q -> %q\n' "$action" "$destination" "$source" || return 1
+        if IFS= read -r -d '' directory < <(_dfl_link_destination "$destination"); then
+            destination=$directory
+            if [[ -L $destination && -d $destination ]]; then
+                if ! IFS= read -r -d '' directory < <(realpath -ze -- "$destination"); then
+                    reason="${reason:+$reason; }invalid destination"
+                    directory=
+                fi
+            fi
+            directories[i]=$directory
+            if ! _dfl_link_matches "$source" "$destination" &&
+               [[ -e $destination || -L $destination ]]; then
+                reason="${reason:+$reason; }destination already exists"
+            fi
+        else
+            reason="${reason:+$reason; }invalid destination"
+        fi
+        destinations[i]=$destination
+        reasons[i]=$reason
     done
+
+    for i in "${!destinations[@]}"; do
+        [[ -n ${directories[i]} ]] || continue
+        for j in "${!destinations[@]}"; do
+            [[ $j -lt $i && -n ${directories[j]} ]] || continue
+            if [[ ${destinations[i]} == "${destinations[j]}" ||
+                  ${destinations[i]} == "${directories[j]%/}/"* ||
+                  ${destinations[j]} == "${directories[i]%/}/"* ]]; then
+                if [[ ${reasons[i]} != *'overlapping destinations'* ]]; then
+                    reasons[i]="${reasons[i]:+${reasons[i]}; }overlapping destinations"
+                fi
+                if [[ ${reasons[j]} != *'overlapping destinations'* ]]; then
+                    reasons[j]="${reasons[j]:+${reasons[j]}; }overlapping destinations"
+                fi
+            fi
+        done
+    done
+
+    for i in "${!_dfl_link_sources[@]}"; do
+        source=${_dfl_link_sources[i]}
+        destination=${destinations[i]}
+        if [[ -n ${reasons[i]} ]]; then
+            printf 'conflict %q -> %q (%s)\n' "$destination" "$source" "${reasons[i]}" || return 1
+            status=1
+        else
+            action=create
+            if _dfl_link_matches "$source" "$destination"; then
+                action=skip
+            fi
+            printf '%s %q -> %q\n' "$action" "$destination" "$source" || return 1
+        fi
+    done
+    return "$status"
 }
+
 
 dfl_link_apply() {
     dfl_link_check || return 1
