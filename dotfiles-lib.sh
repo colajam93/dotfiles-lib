@@ -1,8 +1,3 @@
-_dfl_red=$(tput setaf 1 2> /dev/null)
-_dfl_yellow=$(tput setaf 3 2> /dev/null)
-_dfl_blue=$(tput setaf 4 2> /dev/null)
-_dfl_reset=$(tput sgr0 2> /dev/null)
-
 _dfl_overwrite_file() {
     local destfile_new=$1
     local destfile_old=$2
@@ -25,25 +20,31 @@ _dfl_is_quiet() {
     return $?
 }
 
-dfl_print_error() {
+_dfl_print_message() {
     if _dfl_is_quiet; then
         return 0
     fi
-    echo "${_dfl_red}error:${_dfl_reset} $1"
+    local color='' reset=''
+    # Check the descriptor at the call site, including redirection to stderr.
+    if [[ -t 1 && -n ${TERM:-} && ${TERM:-} != dumb ]] &&
+       color=$(tput setaf "$1" 2>/dev/null) &&
+       reset=$(tput sgr0 2>/dev/null); then
+        printf '%s%s:%s %s\n' "$color" "$2" "$reset" "$3"
+    else
+        printf '%s: %s\n' "$2" "$3"
+    fi
+}
+
+dfl_print_error() {
+    _dfl_print_message 1 error "$1"
 }
 
 dfl_print_warning() {
-    if _dfl_is_quiet; then
-        return 0
-    fi
-    echo "${_dfl_yellow}warning:${_dfl_reset} $1"
+    _dfl_print_message 3 warning "$1"
 }
 
 dfl_print_information() {
-    if _dfl_is_quiet; then
-        return 0
-    fi
-    echo "${_dfl_blue}information:${_dfl_reset} $1"
+    _dfl_print_message 4 information "$1"
 }
 
 dfl_safe_install() {
