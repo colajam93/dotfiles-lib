@@ -21,7 +21,7 @@ _dfl_is_quiet() {
 }
 
 _dfl_print_message() {
-    if _dfl_is_quiet; then
+    if [[ ${4:-false} != true ]] && _dfl_is_quiet; then
         return 0
     fi
     local color='' reset=''
@@ -29,22 +29,37 @@ _dfl_print_message() {
     if [[ -t 1 && -n ${TERM:-} && ${TERM:-} != dumb ]] &&
        color=$(tput setaf "$1" 2>/dev/null) &&
        reset=$(tput sgr0 2>/dev/null); then
-        printf '%s%s:%s %s\n' "$color" "$2" "$reset" "$3"
+        printf '%s%s%s %s\n' "$color" "$2" "$reset" "$3"
     else
-        printf '%s: %s\n' "$2" "$3"
+        printf '%s %s\n' "$2" "$3"
     fi
 }
 
 dfl_print_error() {
-    _dfl_print_message 1 error "$1"
+    _dfl_print_message 1 error: "$1"
 }
 
 dfl_print_warning() {
-    _dfl_print_message 3 warning "$1"
+    _dfl_print_message 3 warning: "$1"
 }
 
 dfl_print_information() {
-    _dfl_print_message 4 information "$1"
+    _dfl_print_message 4 information: "$1"
+}
+
+_dfl_print_link() {
+    local action=$1 destination=$2 source=$3 reason=${4:-} message color
+    case $action in
+        create) color=2 ;;
+        skip) color=4 ;;
+        conflict) color=1 ;;
+        *) return 1 ;;
+    esac
+    printf -v message '%q -> %q' "$destination" "$source"
+    if [[ -n $reason ]]; then
+        message+=" ($reason)"
+    fi
+    _dfl_print_message "$color" "$action" "$message" "${5:-false}"
 }
 
 dfl_safe_install() {
@@ -321,14 +336,14 @@ dfl_link_preview() {
         source=${_dfl_link_sources[i]}
         destination=${destinations[i]}
         if [[ -n ${reasons[i]} ]]; then
-            printf 'conflict %q -> %q (%s)\n' "$destination" "$source" "${reasons[i]}" || return 1
+            _dfl_print_link conflict "$destination" "$source" "${reasons[i]}" true || return 1
             status=1
         else
             action=create
             if _dfl_link_matches "$source" "$destination"; then
                 action=skip
             fi
-            printf '%s %q -> %q\n' "$action" "$destination" "$source" || return 1
+            _dfl_print_link "$action" "$destination" "$source" "" true || return 1
         fi
     done
     return "$status"
@@ -350,8 +365,6 @@ dfl_link_apply() {
             ln -sT -- "$source" "$destination" || return 1
             action=create
         fi
-        if ! _dfl_is_quiet; then
-            printf "%s %q -> %q\n" "$action" "$destination" "$source" || return 1
-        fi
+        _dfl_print_link "$action" "$destination" "$source" || return 1
     done
 }
