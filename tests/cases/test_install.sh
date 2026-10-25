@@ -585,9 +585,9 @@ test_install_vim_layout() {
 }
 
 test_print_messages() {
-    assertEquals "$(tput setaf 1)error:$(tput sgr0) failure" "$(dfl_print_error failure)"
-    assertEquals "$(tput setaf 3)warning:$(tput sgr0) warning" "$(dfl_print_warning warning)"
-    assertEquals "$(tput setaf 4)information:$(tput sgr0) progress" "$(dfl_print_information progress)"
+    assertEquals "error: failure" "$(dfl_print_error failure)"
+    assertEquals "warning: warning" "$(dfl_print_warning warning)"
+    assertEquals "information: progress" "$(dfl_print_information progress)"
 }
 
 test_print_messages_quiet() {
