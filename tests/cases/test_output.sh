@@ -143,5 +143,30 @@ EOF
     assertEquals '' "$(cat terminal-output)"
 }
 
+test_link_messages_use_terminal_colors() {
+    cat > probe.sh <<'EOF'
+set -euo pipefail
+export TERM=xterm
+source "$DFL_TEST_LIB"
+printf config > source
+dfl_link_add "$PWD/source" "$PWD/target"
+dfl_link_apply
+dfl_link_apply
+rm target
+printf existing > target
+if dfl_link_preview; then exit 1; fi
+EOF
+    run_tty
+    assertEquals 0 "$?"
+    local destination source_path expected
+    printf -v destination '%q' "$PWD/target"
+    printf -v source_path '%q' "$PWD/source"
+    printf -v expected '%screate%s %s -> %s\n%sskip%s %s -> %s\n%sconflict%s %s -> %s (destination already exists)' \
+        "$(TERM=xterm tput setaf 2)" "$(TERM=xterm tput sgr0)" "$destination" "$source_path" \
+        "$(TERM=xterm tput setaf 4)" "$(TERM=xterm tput sgr0)" "$destination" "$source_path" \
+        "$(TERM=xterm tput setaf 1)" "$(TERM=xterm tput sgr0)" "$destination" "$source_path"
+    assertEquals "$expected" "$(tr -d '\r' < terminal-output)"
+}
+
 # shellcheck source=/dev/null
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"
