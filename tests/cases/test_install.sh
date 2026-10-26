@@ -812,6 +812,29 @@ test_copy_failed_prompt_does_not_consume_confirmation() {
 }
 
 
+test_copy_eof_ends_prompt_line_on_stderr() {
+    printf old > target
+    (
+        set -euo pipefail
+        _dfl_quiet=true dfl_safe_install "$LIBSS_TEST_INPUT" target < /dev/null
+        printf 'next-output\n' >&2
+    ) > stdout 2> stderr
+    assertEquals 0 "$?"
+    assertEquals old "$(cat target)"
+    assertEquals '' "$(cat stdout)"
+    assertTrue 'grep -q "^next-output$" stderr'
+    assertTrue 'grep -q "overwrite .*by new file? \[y/N\] $" stderr'
+}
+
+test_copy_partial_answer_at_eof_is_declined() {
+    printf old > target
+    printf y | _dfl_quiet=true dfl_safe_install "$LIBSS_TEST_INPUT" target > stdout 2> stderr
+    assertEquals 0 "$?"
+    assertEquals old "$(cat target)"
+    assertEquals 10 "$(tail -c 1 stderr | od -An -tu1 | tr -d ' ')"
+}
+
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
