@@ -771,6 +771,47 @@ test_safe_install_creates_file_with_nounset() {
     assertTrue '[[ -e continued ]]'
 }
 
+test_copy_confirmation_uses_stderr() {
+    printf old > target
+    printf 'n\n' | dfl_safe_install "$LIBSS_TEST_INPUT" target > stdout 2> stderr
+    assertEquals 0 "$?"
+    assertTrue 'grep -q "^information:" stdout'
+    assertFalse 'grep -q "^---\|^+++\|overwrite .*by new file" stdout'
+    assertTrue 'grep -q "^--- .*target" stderr'
+    assertTrue 'grep -q "^+++ .*target.dotnew" stderr'
+    assertTrue 'grep -q "overwrite .*target by new file?" stderr'
+    assertEquals old "$(cat target)"
+}
+
+test_copy_quiet_keeps_confirmation_on_stderr() {
+    printf old > target
+    printf 'y\n' | _dfl_quiet=true dfl_safe_install "$LIBSS_TEST_INPUT" target > stdout 2> stderr
+    assertEquals 0 "$?"
+    assertEquals '' "$(cat stdout)"
+    assertTrue 'grep -q "^--- .*target" stderr'
+    assertTrue 'grep -q "overwrite .*target by new file?" stderr'
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat target)"
+}
+
+test_copy_force_does_not_prompt_on_stderr() {
+    printf old > target
+    _dfl_force=true dfl_safe_install "$LIBSS_TEST_INPUT" target > stdout 2> stderr
+    assertEquals 0 "$?"
+    assertEquals '' "$(cat stderr)"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat target)"
+}
+
+test_copy_failed_prompt_does_not_consume_confirmation() {
+    printf old > target
+    (
+        diff() { return 1; }
+        printf 'y\n' | dfl_safe_install "$LIBSS_TEST_INPUT" target > stdout 2> /dev/full
+    )
+    assertNotEquals 0 "$?"
+    assertEquals old "$(cat target)"
+}
+
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
