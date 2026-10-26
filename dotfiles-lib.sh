@@ -21,6 +21,7 @@ _dfl_is_quiet() {
 }
 
 _dfl_print_message() {
+    # tput setaf indices: 1=red, 2=green, 3=yellow, 4=blue.
     local color='' reset=''
     # Check the descriptor at the call site, including redirection to stderr.
     if [[ -t 1 && -n ${TERM:-} && ${TERM:-} != dumb ]] &&
@@ -50,9 +51,9 @@ dfl_print_information() {
 _dfl_print_link() {
     local action=$1 destination=$2 source=$3 reason=${4:-} message color
     case $action in
-        create) color=2 ;;
-        skip) color=4 ;;
-        conflict) color=1 ;;
+        create) color=2 ;; # Green
+        skip) color=4 ;; # Blue
+        conflict) color=1 ;; # Red
         *) return 1 ;;
     esac
     printf -v message '%q -> %q' "$destination" "$source"
