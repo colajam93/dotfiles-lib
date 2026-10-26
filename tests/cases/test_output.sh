@@ -143,6 +143,30 @@ EOF
     assertEquals '' "$(cat terminal-output)"
 }
 
+test_quiet_preview_preserves_setting_for_later_output() {
+    cat > probe.sh <<'PROBE'
+set -euo pipefail
+source "$DFL_TEST_LIB"
+_dfl_quiet=true
+printf config > source
+dfl_link_add "$PWD/source" "$PWD/target"
+dfl_link_preview > preview-output
+[[ $_dfl_quiet == true ]]
+dfl_link_apply
+dfl_link_apply
+dfl_print_error failure
+dfl_print_warning warning
+dfl_print_information progress
+dfl_link_preview > repeated-preview
+[[ $_dfl_quiet == true && -L target ]]
+PROBE
+    bash probe.sh > quiet-output 2>&1
+    assertEquals 0 "$?"
+    assertEquals '' "$(cat quiet-output)"
+    assertEquals "create $PWD/target -> $PWD/source" "$(cat preview-output)"
+    assertEquals "skip $PWD/target -> $PWD/source" "$(cat repeated-preview)"
+}
+
 test_link_messages_use_terminal_colors() {
     cat > probe.sh <<'EOF'
 set -euo pipefail
