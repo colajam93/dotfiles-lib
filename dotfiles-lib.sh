@@ -66,7 +66,7 @@ dfl_safe_install() {
     # source file
     if [[ -e $1 ]]; then
         local srcfile
-        srcfile=$(readlink -f -- "$1") || return 1
+        IFS= read -r -d '' srcfile < <(readlink -fz -- "$1") || return 1
     else
         echo "$1: No such file or directory"
         return 1
@@ -76,10 +76,10 @@ dfl_safe_install() {
     local destfile
     if [[ -d $2 ]]; then
         local filename
-        filename=$(basename -- "$srcfile") || return 1
-        destfile=$(readlink -f -- "$2/$filename") || return 1
+        IFS= read -r -d '' filename < <(basename -z -- "$srcfile") || return 1
+        IFS= read -r -d '' destfile < <(readlink -fz -- "$2/$filename") || return 1
     else
-        destfile=$(readlink -f -- "$2") || return 1
+        IFS= read -r -d '' destfile < <(readlink -fz -- "$2") || return 1
     fi
 
     # if argc == 3, use 3rd argument as permission mode which pass to install -m
@@ -136,8 +136,8 @@ dfl_dotfile_install() {
     # src is not dotfile and dest is directory
     if ! [[ $1 == .* ]] && [[ -d $2 ]]; then
         local filename
-        filename=$(basename -- "$1") || return 1
-        destfile=$(readlink -f -- "$2/.$filename") || return 1
+        IFS= read -r -d '' filename < <(basename -z -- "$1") || return 1
+        IFS= read -r -d '' destfile < <(readlink -fz -- "$2/.$filename") || return 1
     # do nothing
     else
         destfile=$2
@@ -172,7 +172,7 @@ dfl_install_all() {
                 continue 2
             fi
         done
-        srcfile=$(readlink -f -- "$i") || return 1
+        IFS= read -r -d '' srcfile < <(readlink -fz -- "$i") || return 1
         dfl_dotfile_install "$srcfile" "$HOME" || return 1
     done
 }
