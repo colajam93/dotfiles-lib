@@ -286,68 +286,48 @@ dfl_link_check() {
 dfl_link_preview() {
     local i j source destination directory action reason
     local status=0
-    local destinations=() directories=() reasons=()
+    local destinations=() directories=()
 
-    # Inspect the complete plan before printing so both sides of an overlap
-    # are marked as conflicts, regardless of registration order.
+    # Report each entry once; overlaps are reported on the later entry.
     for i in "${!_dfl_link_sources[@]}"; do
         source=${_dfl_link_sources[i]}
         destination=${_dfl_link_destinations[i]}
         reason=
-        directories[i]=
         if [[ ! -e $source ]]; then
             reason='source does not exist'
-        fi
-        if IFS= read -r -d '' directory < <(_dfl_link_destination "$destination"); then
+        elif ! IFS= read -r -d '' directory < <(_dfl_link_destination "$destination"); then
+            reason='invalid destination'
+        else
             destination=$directory
             if [[ -L $destination && -d $destination ]]; then
-                if ! IFS= read -r -d '' directory < <(realpath -ze -- "$destination"); then
-                    reason="${reason:+$reason; }invalid destination"
-                    directory=
-                fi
+                IFS= read -r -d '' directory < <(realpath -ze -- "$destination") || return 1
             fi
-            directories[i]=$directory
-            if ! _dfl_link_matches "$source" "$destination" &&
+            for j in "${!destinations[@]}"; do
+                if [[ $destination == "${destinations[j]}" ||
+                      $destination == "${directories[j]%/}/"* ||
+                      ${destinations[j]} == "${directory%/}/"* ]]; then
+                    reason='overlapping destinations'
+                    break
+                fi
+            done
+            destinations+=("$destination")
+            directories+=("$directory")
+            if [[ -z $reason ]] && ! _dfl_link_matches "$source" "$destination" &&
                [[ -e $destination || -L $destination ]]; then
-                reason="${reason:+$reason; }destination already exists"
+                reason='destination already exists'
             fi
-        else
-            reason="${reason:+$reason; }invalid destination"
         fi
-        destinations[i]=$destination
-        reasons[i]=$reason
-    done
 
-    for i in "${!destinations[@]}"; do
-        [[ -n ${directories[i]} ]] || continue
-        for j in "${!destinations[@]}"; do
-            [[ $j -lt $i && -n ${directories[j]} ]] || continue
-            if [[ ${destinations[i]} == "${destinations[j]}" ||
-                  ${destinations[i]} == "${directories[j]%/}/"* ||
-                  ${destinations[j]} == "${directories[i]%/}/"* ]]; then
-                if [[ ${reasons[i]} != *'overlapping destinations'* ]]; then
-                    reasons[i]="${reasons[i]:+${reasons[i]}; }overlapping destinations"
-                fi
-                if [[ ${reasons[j]} != *'overlapping destinations'* ]]; then
-                    reasons[j]="${reasons[j]:+${reasons[j]}; }overlapping destinations"
-                fi
-            fi
-        done
-    done
-
-    for i in "${!_dfl_link_sources[@]}"; do
-        source=${_dfl_link_sources[i]}
-        destination=${destinations[i]}
-        if [[ -n ${reasons[i]} ]]; then
-            _dfl_print_link conflict "$destination" "$source" "${reasons[i]}" true || return 1
+        if [[ -n $reason ]]; then
+            _dfl_print_link conflict "$destination" "$source" "$reason" true || return 1
             status=1
-        else
-            action=create
-            if _dfl_link_matches "$source" "$destination"; then
-                action=skip
-            fi
-            _dfl_print_link "$action" "$destination" "$source" "" true || return 1
+            continue
         fi
+        action=create
+        if _dfl_link_matches "$source" "$destination"; then
+            action=skip
+        fi
+        _dfl_print_link "$action" "$destination" "$source" "" true || return 1
     done
     return "$status"
 }
