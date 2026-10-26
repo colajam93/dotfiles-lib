@@ -835,6 +835,62 @@ test_copy_partial_answer_at_eof_is_declined() {
 }
 
 
+test_copy_source_trailing_newline_is_not_another_file() {
+    local name=$'inputs/name\n'
+    mkdir inputs destination
+    printf regular > inputs/name
+    printf newline > "$name"
+    dfl_safe_install "$name" destination > /dev/null
+    assertEquals 0 "$?"
+    assertTrue "test -f 'destination/${name##*/}'"
+    assertEquals newline "$(cat "destination/${name##*/}")"
+    assertFalse '[[ -e destination/name ]]'
+}
+
+test_copy_destination_trailing_newline_preserves_neighbor() {
+    local target=$'target\n'
+    printf neighbor > target
+    printf old > "$target"
+    _dfl_force=true dfl_safe_install "$LIBSS_TEST_INPUT" "$target" > /dev/null
+    assertEquals 0 "$?"
+    assertEquals "$LIBSS_TEST_CONTENT" "$(cat "$target")"
+    assertEquals neighbor "$(cat target)"
+}
+
+test_dotfile_copy_preserves_trailing_newlines() {
+    local name=$'source\n' directory=$'destination\n'
+    printf newline > "$name"
+    mkdir "$directory"
+    dfl_dotfile_install "$PWD/$name" "$PWD/$directory" > /dev/null
+    assertEquals 0 "$?"
+    assertEquals newline "$(cat "$directory/.$name")"
+    assertFalse "test -e '$directory/.source'"
+}
+
+test_batch_copy_keeps_names_with_and_without_trailing_newline() {
+    mkdir inputs destination
+    printf regular > inputs/name
+    printf newline > $'inputs/name\n'
+    (
+        set -euo pipefail
+        HOME="$PWD/destination" dfl_install_all inputs
+    ) > /dev/null
+    assertEquals 0 "$?"
+    assertEquals regular "$(cat destination/.name)"
+    assertEquals newline "$(cat $'destination/.name\n')"
+}
+
+test_copy_source_symlink_to_trailing_newline_name() {
+    printf newline > $'source\n'
+    ln -s $'source\n' linked
+    mkdir destination
+    dfl_safe_install linked destination > /dev/null
+    assertEquals 0 "$?"
+    assertEquals newline "$(cat $'destination/source\n')"
+    assertFalse '[[ -e destination/source ]]'
+}
+
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if ! [[ -f "${SHUNIT2:-/usr/share/shunit2/shunit2}" ]]; then
