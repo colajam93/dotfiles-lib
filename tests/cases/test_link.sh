@@ -408,7 +408,7 @@ create $PWD/new/config -> $PWD/source" "$output"
     assertEquals blocked "$(cat parent)"
 }
 
-test_link_preview_marks_both_overlapping_entries() {
+test_link_preview_marks_only_later_overlapping_entries() {
     mkdir source-dir
     local order output
     for order in parent-first child-first; do
@@ -423,8 +423,10 @@ test_link_preview_marks_both_overlapping_entries() {
         dfl_link_add source independent
         output=$(dfl_link_preview)
         assertNotEquals 0 "$?"
-        assertEquals 2 "$(printf '%s\n' "$output" | grep -c '^conflict .* (overlapping destinations)$')"
-        assertEquals 1 "$(printf '%s\n' "$output" | grep -c '^create ')"
+        assertEquals 1 "$(printf '%s\n' "$output" | grep -c '^conflict .* (overlapping destinations)$')"
+        assertEquals 2 "$(printf '%s\n' "$output" | grep -c '^create ')"
+        assertEquals create "$(printf '%s\n' "$output" | head -n 1 | cut -d ' ' -f 1)"
+        assertEquals conflict "$(printf '%s\n' "$output" | sed -n '2s/ .*//p')"
         dfl_link_apply >/dev/null 2>&1
         assertNotEquals 0 "$?"
         assertFalse '[[ -e target || -e independent ]]'
@@ -441,7 +443,7 @@ test_link_preview_detects_alias_overlaps_and_duplicates() {
     local output
     output=$(dfl_link_preview)
     assertNotEquals 0 "$?"
-    assertEquals 3 "$(printf '%s\n' "$output" | grep -c '^conflict .* (overlapping destinations)$')"
+    assertEquals 2 "$(printf '%s\n' "$output" | grep -c '^conflict .* (overlapping destinations)$')"
     assertFalse '[[ -e source-dir/config ]]'
     assertEquals source-dir "$(readlink target)"
 }
@@ -468,6 +470,21 @@ test_link_preview_reports_all_under_strict_options() {
     assertNotEquals 0 "$?"
     assertEquals 2 "$(wc -l < output)"
     assertFalse '[[ -e new ]]'
+}
+
+test_link_preview_reports_one_reason_per_entry_and_continues() {
+    printf old > conflict
+    dfl_link_add missing conflict
+    dfl_link_add source new
+    local output
+    output=$(dfl_link_preview)
+    assertNotEquals 0 "$?"
+    assertEquals "conflict $PWD/conflict -> $PWD/missing (source does not exist)
+create $PWD/new -> $PWD/source" "$output"
+    dfl_link_apply >/dev/null 2>&1
+    assertNotEquals 0 "$?"
+    assertFalse '[[ -e new || -L new ]]'
+    assertEquals old "$(cat conflict)"
 }
 
 test_link_preview_output_failure_is_returned() {
