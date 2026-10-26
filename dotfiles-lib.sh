@@ -21,9 +21,6 @@ _dfl_is_quiet() {
 }
 
 _dfl_print_message() {
-    if [[ ${4:-false} != true ]] && _dfl_is_quiet; then
-        return 0
-    fi
     local color='' reset=''
     # Check the descriptor at the call site, including redirection to stderr.
     if [[ -t 1 && -n ${TERM:-} && ${TERM:-} != dumb ]] &&
@@ -36,14 +33,17 @@ _dfl_print_message() {
 }
 
 dfl_print_error() {
+    _dfl_is_quiet && return 0
     _dfl_print_message 1 error: "$1"
 }
 
 dfl_print_warning() {
+    _dfl_is_quiet && return 0
     _dfl_print_message 3 warning: "$1"
 }
 
 dfl_print_information() {
+    _dfl_is_quiet && return 0
     _dfl_print_message 4 information: "$1"
 }
 
@@ -59,7 +59,7 @@ _dfl_print_link() {
     if [[ -n $reason ]]; then
         message+=" ($reason)"
     fi
-    _dfl_print_message "$color" "$action" "$message" "${5:-false}"
+    _dfl_print_message "$color" "$action" "$message"
 }
 
 dfl_safe_install() {
@@ -319,7 +319,7 @@ dfl_link_preview() {
         fi
 
         if [[ -n $reason ]]; then
-            _dfl_print_link conflict "$destination" "$source" "$reason" true || return 1
+            _dfl_print_link conflict "$destination" "$source" "$reason" || return 1
             status=1
             continue
         fi
@@ -327,7 +327,7 @@ dfl_link_preview() {
         if _dfl_link_matches "$source" "$destination"; then
             action=skip
         fi
-        _dfl_print_link "$action" "$destination" "$source" "" true || return 1
+        _dfl_print_link "$action" "$destination" "$source" || return 1
     done
     return "$status"
 }
@@ -348,6 +348,8 @@ dfl_link_apply() {
             ln -sT -- "$source" "$destination" || return 1
             action=create
         fi
-        _dfl_print_link "$action" "$destination" "$source" || return 1
+        if ! _dfl_is_quiet; then
+            _dfl_print_link "$action" "$destination" "$source" || return 1
+        fi
     done
 }
