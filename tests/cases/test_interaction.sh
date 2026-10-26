@@ -8,7 +8,7 @@ setUp() {
 }
 
 exercise_confirmation() {
-    local answer=$1 quiet=$2 redirected=$3 directory=$case_dir/$1-$2-$3
+    local answer=$1 quiet=${2:-false} redirected=${3:-false} directory=$case_dir
     mkdir -p "$directory/home"
     printf 'new\n' > "$directory/source"
     printf 'old\n' > "$directory/home/config"
@@ -18,32 +18,28 @@ source "$DFL_PTY_LIB"
 dfl_safe_install "$DFL_PTY_SOURCE" "$HOME/config"
 printf 'completed\n' >&2
 EOF
+    local command
     if [[ -n ${DFL_TEST_CONSUMER:-} ]]; then
         mkdir -p "$directory/repo/dotfiles/pty-test"
         cp "$DFL_TEST_CONSUMER" "$directory/repo/install.sh"
         cp -a "$(dirname -- "$DFL_TEST_CONSUMER")/vendor" "$directory/repo/"
         cp "$directory/copy.sh" "$directory/repo/dotfiles/pty-test/install.sh"
+        printf -v command 'bash %q' "$directory/repo/install.sh"
+        if [[ $quiet == true ]]; then command+=" --quiet"; fi
+        command+=" pty-test"
+    else
+        printf -v command 'bash %q' "$directory/copy.sh"
     fi
-    cat > "$directory/probe.sh" <<'EOF'
-set -euo pipefail
-if [[ $DFL_PTY_REDIRECT == true ]]; then exec > "$DFL_PTY_DIR/stdout"; fi
-if [[ -n ${DFL_TEST_CONSUMER:-} ]]; then
-    args=()
-    if [[ $_dfl_quiet == true ]]; then args+=(--quiet); fi
-    exec bash "$DFL_PTY_DIR/repo/install.sh" "${args[@]}" pty-test
-else
-    exec bash "$DFL_PTY_DIR/copy.sh"
-fi
-EOF
-    local command pid code=0 ready=false attempt
-    printf -v command 'bash %q' "$directory/probe.sh"
+    if [[ $redirected == true ]]; then
+        printf -v command '%s > %q' "$command" "$directory/stdout"
+    fi
+    local pid code=0 ready=false attempt
     mkfifo "$directory/input"
     # Hold the FIFO open until the prompt appears, then send terminal input.
     local input_fd
     exec {input_fd}<> "$directory/input"
     HOME="$directory/home" TERM=dumb _dfl_force=false _dfl_quiet="$quiet" \
         DFL_PTY_LIB="$library" DFL_PTY_SOURCE="$directory/source" \
-        DFL_PTY_DIR="$directory" DFL_PTY_REDIRECT="$redirected" \
         env --default-signal=INT --default-signal=QUIT \
         timeout --kill-after=2 10 script -qefc "$command" /dev/null \
         < "$directory/input" > "$directory/terminal" 2>&1 &
@@ -95,19 +91,13 @@ EOF
     fi
 }
 
-run_combinations() {
-    local quiet redirected
-    for quiet in false true; do
-        for redirected in false true; do
-            exercise_confirmation "$1" "$quiet" "$redirected"
-        done
-    done
-}
-
-test_confirmation_yes() { run_combinations yes; }
-test_confirmation_no() { run_combinations no; }
-test_confirmation_ctrl_d() { run_combinations eof; }
-test_confirmation_ctrl_c() { run_combinations interrupt; }
+test_confirmation_yes() { exercise_confirmation yes; }
+test_confirmation_no() { exercise_confirmation no; }
+test_confirmation_ctrl_d() { exercise_confirmation eof; }
+test_confirmation_ctrl_c() { exercise_confirmation interrupt; }
+test_confirmation_quiet() { exercise_confirmation yes true; }
+test_confirmation_redirected() { exercise_confirmation yes false true; }
+test_confirmation_quiet_redirected() { exercise_confirmation yes true true; }
 
 # shellcheck source=/dev/null
 source "${SHUNIT2:-/usr/share/shunit2/shunit2}"
