@@ -11,7 +11,7 @@
   reproduce the failure first, make the smallest fix, then refactor. Add passing
   characterization tests before refactoring existing behavior.
 - Run `./tests/run.sh` and `./tests/lint.sh` in Docker and check `git diff --check`.
-  Do not install test dependencies on the host with pacman.
+  Do not install test dependencies on the host.
 - Keep ShellCheck settings in `.shellcheckrc` when possible. Keep source tracking
   for this library; avoid broad warning suppression.
 - Keep README minimal. Do not add work history, a Tests section, or detailed
